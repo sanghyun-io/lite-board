@@ -291,8 +291,11 @@ const zoomBy=k=>zoomAt(innerWidth/2,innerHeight/2,cam.z*k);
 const zoomTo=z=>zoomAt(innerWidth/2,innerHeight/2,z);
 function fit(){
   if(!shapes.length){cam={x:0,y:0,z:1};render();return}
-  const b=union(shapes),m=80,z=clampZ(Math.min(4,(innerWidth-2*m)/Math.max(b.w,1),(innerHeight-2*m)/Math.max(b.h,1)));
-  cam.z=z;cam.x=innerWidth/2-(b.x+b.w/2)*z;cam.y=innerHeight/2-(b.y+b.h/2)*z;render();saveSoon();
+  // keep clear of the floating panels: top menu/toolbar, right style panel, bottom controls
+  const sp=$('#style'),R=sp&&sp.offsetWidth&&innerWidth>700?sp.offsetWidth+24:24,T=72,B=72,Lm=24,m=24;
+  const aw=Math.max(80,innerWidth-Lm-R-2*m),ah=Math.max(80,innerHeight-T-B-2*m),cx=Lm+m+aw/2,cy=T+m+ah/2;
+  const b=union(shapes),z=clampZ(Math.min(4,aw/Math.max(b.w,1),ah/Math.max(b.h,1)));
+  cam.z=z;cam.x=cx-(b.x+b.w/2)*z;cam.y=cy-(b.y+b.h/2)*z;render();saveSoon();
 }
 const toPage=(sx,sy)=>({x:(sx-cam.x)/cam.z,y:(sy-cam.y)/cam.z});
 

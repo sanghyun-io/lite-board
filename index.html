@@ -35,7 +35,18 @@ button[aria-pressed=true]{background:var(--acc);color:var(--panel)}
 .seg button{flex:1;min-width:0;min-height:26px;padding:3px 1px;font-size:11px}
 #zoom{bottom:10px;left:10px}
 #zl{min-width:52px;font-variant-numeric:tabular-nums;font-size:12px}
-#toast{position:fixed;left:50%;bottom:18px;transform:translate(-50%,20px);opacity:0;pointer-events:none;transition:.2s;z-index:9;background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:10px;font-size:13px;max-width:90vw}
+#tabs{bottom:10px;left:300px;gap:2px;max-width:calc(100vw - 20px)}
+#tabl{display:flex;gap:2px;overflow-x:auto;min-width:0;position:relative;scrollbar-width:thin}
+.tb{display:flex;align-items:center;flex:none;border-radius:8px}
+.tb.on,.tb:hover{background:var(--accbg)}.tb>button:hover{background:none}.tb .tx:hover{color:var(--ink)}
+.tb>button[role=tab]{touch-action:pan-y;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;padding:6px 4px 6px 10px}
+.tb.on>button[role=tab]{color:var(--acc);font-weight:650}
+.tb .tx{min-width:20px;min-height:20px;padding:0;margin-right:4px;font-size:14px;line-height:1;color:var(--mut);visibility:hidden}
+.tb:hover .tx,.tb.on .tx,.tb .tx:focus-visible{visibility:visible}
+.tb.drg{background:var(--panel);box-shadow:0 2px 10px #0000002e;position:relative;z-index:1;opacity:.9}
+.tin{font:inherit;font-size:12px;width:90px;margin:0 2px;padding:5px 8px;border:1px solid var(--acc);border-radius:6px;background:var(--bg);color:var(--ink);outline:none}
+#tabAdd{flex:none;font-size:16px;line-height:1}
+#toast{position:fixed;left:50%;bottom:62px;transform:translate(-50%,20px);opacity:0;pointer-events:none;transition:.2s;z-index:9;background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:10px;font-size:13px;max-width:90vw}
 #toast.on{opacity:1;transform:translate(-50%,0)}
 #toast.err{background:#c2352f;color:#fff}
 #ta{position:fixed;display:none;z-index:4;margin:0;border:0;outline:1.5px dashed var(--sel);background:transparent;resize:none;overflow:hidden;line-height:1.3;font-family:ui-rounded,system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -43,7 +54,7 @@ button[aria-pressed=true]{background:var(--acc);color:var(--panel)}
 .so{fill:none;stroke:var(--sel);stroke-width:1;stroke-dasharray:3 3;opacity:.7}
 .hd{fill:var(--panel);stroke:var(--sel);stroke-width:1.5}
 .mq{fill:var(--sel);fill-opacity:.07;stroke:var(--sel);stroke-width:1}
-@media (max-width:760px){#style{top:auto;bottom:56px;width:170px}#tools{top:56px}}
+@media (max-width:760px){#style{top:auto;bottom:104px;width:170px}#tools{top:56px}}
 </style>
 </head>
 <body>
@@ -76,6 +87,7 @@ button[aria-pressed=true]{background:var(--acc);color:var(--panel)}
 <button id="bIn" aria-label="Zoom in (+)" title="Zoom in (+)"><svg viewBox="0 0 20 20"><path d="M5 10h10M10 5v10"/></svg></button>
 <button id="bFit" aria-label="Zoom to fit (Shift+1)" title="Zoom to fit (Shift+1)"><svg viewBox="0 0 20 20"><path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4"/></svg></button>
 </div>
+<div id="tabs" class="pn" aria-label="Pages"><div id="tabl" role="tablist" aria-label="Pages"></div><button id="tabAdd" aria-label="Add page" title="페이지 추가">+</button></div>
 <textarea id="ta" aria-label="Edit text" spellcheck="false"></textarea>
 <div id="hint" hidden><b>빈 보드입니다</b>위 도구를 골라 그려 보세요<br><kbd>R</kbd> 사각형 · <kbd>D</kbd> 그리기 · <kbd>T</kbd> 텍스트 · <kbd>N</kbd> 노트<br>파일은 끌어다 놓거나 Open으로 열 수 있습니다</div>
 <input id="file" type="file" accept=".liteboard,.json,.tldr" hidden aria-label="File input">
@@ -118,12 +130,28 @@ const f=n=>Math.round(n*100)/100;
 const esc=s=>String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g,'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const get=id=>shapes.find(s=>s.id===id);
 const selected=()=>shapes.filter(s=>sel.has(s.id));
-const snap=()=>JSON.stringify(shapes);
+/* ---------- pages: `shapes`/`cam` always alias the current page; sync() writes them back ---------- */
+const pid=()=>'p_'+uid().slice(2);
+const mkPage=name=>({id:pid(),name,shapes:[],camera:{x:0,y:0,z:1}});
+let pages=[mkPage('Page 1')],cur=pages[0].id,ren=null;const camMem=new Map();shapes=pages[0].shapes;cam=pages[0].camera;
+const pg=()=>pages.find(p=>p.id===cur);
+function sync(){const p=pg();if(p){p.shapes=shapes;p.camera=cam}}
+function setCur(id){cur=id;const p=pg();shapes=p.shapes;if(p.camera)cam=p.camera;else{cam=p.camera={x:0,y:0,z:1};if(shapes.length)fit()}}
+const snap=c=>{sync();return JSON.stringify({c:c||cur,p:pages.map(p=>({id:p.id,name:p.name,shapes:p.shapes}))})};
 function mark(){undoS.push(snap());if(undoS.length>200)undoS.shift();redoS=[]}
 function pruneSel(){for(const id of [...sel])if(!get(id))sel.delete(id)}
-function restore(j){const was=new Set(shapes.map(s=>s.id));shapes=JSON.parse(j);pruneSel();if(!sel.size)for(const s of shapes)if(!was.has(s.id))sel.add(s.id);changed()}
-function undo(){if(!undoS.length)return;redoS.push(snap());restore(undoS.pop())}
-function redo(){if(!redoS.length)return;undoS.push(snap());restore(redoS.pop())}
+function restore(j){
+  sync();const o=JSON.parse(j),prev=cur,was=new Set(shapes.map(s=>s.id)),cams=new Map(pages.map(p=>[p.id,p.camera]));
+  pages=o.p.map(p=>(p.camera=cams.get(p.id)||camMem.get(p.id)||null,p));
+  const has=id=>pages.some(p=>p.id===id);
+  setCur(has(o.c)?o.c:has(cur)?cur:pages[0].id);
+  if(cur!==prev)sel.clear();else{pruneSel();if(!sel.size)for(const s of shapes)if(!was.has(s.id))sel.add(s.id)}
+  renderTabs();changed();
+}
+/* the counter-snapshot remembers the page the change happened on (the target's page) when that page exists on both sides; else the current page (page add/delete) */
+function step(from,to){if(!from.length)return;const j=from.pop(),o=JSON.parse(j);to.push(snap(o.p.some(p=>p.id===cur)&&pages.some(p=>p.id===o.c)?o.c:cur));restore(j)}
+function undo(){step(undoS,redoS)}
+function redo(){step(redoS,undoS)}
 
 /* ---------- toast ---------- */
 let tt=0;
@@ -290,6 +318,64 @@ $('#mNew').onclick=newDoc;$('#mOpen').onclick=()=>$('#file').click();
 $('#mShare').onclick=()=>shareLink();$('#mJson').onclick=exportJSON;$('#mTldr').onclick=exportTldr;$('#mSvg').onclick=exportSVG;$('#mPng').onclick=exportPNG;
 $('#file').onchange=e=>{const fl=e.target.files[0];if(fl)readFile(fl);e.target.value=''};
 
+/* ---------- sheet tabs ---------- */
+const tabl=$('#tabl');let tabK='';
+function renderTabs(){
+  if(ren)return;let on=null;const k=JSON.stringify(pages.map(p=>[p.id,p.name]));
+  if(k===tabK)for(const w of tabl.children){const a=w.dataset.id===cur;w.className='tb'+(a?' on':'');w.firstChild.setAttribute('aria-selected',a);w.firstChild.tabIndex=a?0:-1;if(a)on=w}
+  else{tabK=k;tabl.innerHTML='';for(const p of pages){
+    const w=document.createElement('div'),a=p.id===cur;w.className='tb'+(a?' on':'');w.dataset.id=p.id;w.setAttribute('role','presentation');
+    const b=document.createElement('button');b.setAttribute('role','tab');b.setAttribute('aria-label','Page: '+p.name);b.setAttribute('aria-selected',a);b.tabIndex=a?0:-1;b.textContent=p.name;b.title=p.name+' (더블클릭/F2: 이름 변경, 드래그: 순서 변경, Delete: 삭제)';
+    const x=document.createElement('button');x.className='tx';x.tabIndex=-1;x.setAttribute('aria-label','Delete page '+p.name);x.title='페이지 삭제';x.textContent='×';x.onclick=()=>delPage(p.id);
+    w.append(b,x);tabl.append(w);if(a)on=w;
+  }}
+  if(on){if(on.offsetLeft<tabl.scrollLeft)tabl.scrollLeft=on.offsetLeft;else if(on.offsetLeft+on.offsetWidth>tabl.scrollLeft+tabl.clientWidth)tabl.scrollLeft=on.offsetLeft+on.offsetWidth-tabl.clientWidth}
+}
+function placeTabs(){
+  const z=$('#zoom'),t=$('#tabs');let l=z.offsetLeft+z.offsetWidth+8,b=10;
+  if(innerWidth-l<180){l=10;b=z.offsetHeight+18}
+  Object.assign(t.style,{left:l+'px',bottom:b+'px',maxWidth:innerWidth-l-10+'px'});$('#toast').style.bottom=b+t.offsetHeight+10+'px';
+}
+function goPage(id){
+  if(id===cur||!pages.some(p=>p.id===id))return;if(ed)commitEdit();
+  drag=null;pinch=null;erasing=new Set();sync();setCur(id);sel.clear();pasteN=0;renderTabs();changed();
+}
+function stepPage(k){const i=pages.findIndex(p=>p.id===cur),j=Math.max(0,Math.min(pages.length-1,i+k));goPage(pages[j].id)}
+function nextName(){let n=1;while(pages.some(p=>p.name==='Page '+n))n++;return'Page '+n}
+function addPage(name){if(ed)commitEdit();mark();const p=mkPage(String(name||'').trim().slice(0,60)||nextName());pages.push(p);goPage(p.id);return p.id}
+function delPage(id){
+  const i=pages.findIndex(p=>p.id===id);if(i<0)return;
+  if(pages.length<2)return toast('마지막 페이지는 삭제할 수 없습니다.',1);
+  if(ed)commitEdit();mark();const nm=pages[i].name;camMem.set(id,pages[i].camera);pages.splice(i,1);
+  if(id===cur){drag=null;setCur(pages[Math.min(i,pages.length-1)].id);sel.clear()}
+  renderTabs();changed();toast(`"${nm}" 페이지를 삭제했습니다. Ctrl+Z로 되돌릴 수 있습니다.`);
+}
+function startRename(id){
+  const p=pages.find(q=>q.id===id),w=[...tabl.children].find(e=>e.dataset.id===id);if(!p||!w)return;
+  const b=w.firstChild,i=document.createElement('input');i.className='tin';i.value=p.name;i.maxLength=60;i.setAttribute('aria-label','Rename page');i.style.width=Math.max(70,b.offsetWidth)+'px';
+  let done=false;ren=id;
+  const end=ok=>{if(done)return;done=true;ren=null;tabK='';const v=i.value.trim();
+    if(ok&&v!==p.name){if(!v)toast('페이지 이름은 비워 둘 수 없습니다.',1);else{mark();p.name=v;saveSoon()}}renderTabs()};
+  i.onkeydown=e=>{e.stopPropagation();if(e.key==='Enter'){e.preventDefault();end(true)}else if(e.key==='Escape'){e.preventDefault();end(false)}};
+  i.onblur=()=>end(true);b.replaceWith(i);i.focus();i.select();
+}
+let td=null,noClick=false;
+const tabOf=e=>{const b=e.target.closest&&e.target.closest('button[role=tab]');return b&&b.parentNode};
+tabl.addEventListener('pointerdown',e=>{const w=tabOf(e);if(!w||e.button!==0)return;td={w,x:e.clientX,m:false};try{e.target.setPointerCapture(e.pointerId)}catch(_){}});
+tabl.addEventListener('pointermove',e=>{if(!td)return;const dx=e.clientX-td.x;if(!td.m){if(Math.abs(dx)<6)return;td.m=true;td.w.classList.add('drg')}td.w.style.transform=`translateX(${dx}px)`});
+tabl.addEventListener('pointerup',e=>{
+  const d=td;td=null;if(!d||!d.m)return;noClick=true;setTimeout(()=>noClick=false,0);d.w.classList.remove('drg');d.w.style.transform='';
+  const id=d.w.dataset.id,from=pages.findIndex(p=>p.id===id);let to=0;
+  for(const c of tabl.children)if(c!==d.w){const r=c.getBoundingClientRect();if(r.left+r.width/2<e.clientX)to++}
+  if(to!==from&&from>=0){mark();pages.splice(to,0,pages.splice(from,1)[0]);saveSoon()}
+  renderTabs();
+});
+tabl.addEventListener('pointercancel',()=>{if(td){td.w.classList.remove('drg');td.w.style.transform='';td=null}});
+tabl.addEventListener('click',e=>{const w=tabOf(e);if(w&&!noClick)goPage(w.dataset.id)});
+tabl.addEventListener('dblclick',e=>{const w=tabOf(e);if(w)startRename(w.dataset.id)});
+tabl.addEventListener('wheel',e=>{if(!e.deltaX&&e.deltaY){tabl.scrollLeft+=e.deltaY;e.preventDefault()}},{passive:false});
+$('#tabAdd').onclick=()=>addPage();
+
 /* ---------- camera ---------- */
 const clampZ=z=>Math.min(8,Math.max(.1,z));
 function zoomAt(sx,sy,nz){nz=clampZ(nz);const px=(sx-cam.x)/cam.z,py=(sy-cam.y)/cam.z;cam.z=nz;cam.x=sx-px*nz;cam.y=sy-py*nz;render();saveSoon()}
@@ -415,7 +501,7 @@ svg.addEventListener('wheel',e=>{
   let dx=e.deltaX,dy=e.deltaY;if(e.deltaMode){dx*=20;dy*=20}if(e.shiftKey&&!dx){dx=dy;dy=0}
   cam.x-=dx;cam.y-=dy;render();saveSoon();
 },{passive:false});
-addEventListener('resize',render);
+addEventListener('resize',()=>{placeTabs();render()});
 mq.addEventListener&&mq.addEventListener('change',render);
 
 /* ---------- text editing ---------- */
@@ -443,6 +529,17 @@ function commitEdit(){
 addEventListener('keydown',e=>{
   if(e.target===ta||e.target.tagName==='INPUT')return;
   const k=e.key,mod=e.ctrlKey||e.metaKey,lk=k.toLowerCase();
+  // Chromium reserves Ctrl+PageDown/PageUp for browser tabs, so Alt+PageDown/PageUp is the reliable alternative
+  if((mod||e.altKey)&&(k==='PageDown'||k==='PageUp')){e.preventDefault();if(!ed&&!ren&&!drag)stepPage(k==='PageDown'?1:-1);return}
+  if(!mod&&!e.altKey&&e.target.tagName==='BUTTON'&&e.target.closest('#tabs')){
+    if(k==='Enter'||k===' ')return; // let the focused page tab / add button activate
+    const w=e.target.getAttribute('role')==='tab'&&e.target.parentNode;
+    if(w){
+      if(k==='F2'){e.preventDefault();return startRename(w.dataset.id)}
+      if(k==='Delete'||k==='Backspace'){e.preventDefault();return delPage(w.dataset.id)}
+      if(k==='ArrowLeft'||k==='ArrowRight'||k==='Home'||k==='End'){e.preventDefault();const i=pages.findIndex(p=>p.id===cur);stepPage(k==='Home'?-i:k==='End'?pages.length:k==='ArrowLeft'?-1:1);const t=tabl.querySelector('.tb.on>button[role=tab]');if(t)t.focus();return}
+    }
+  }
   if(e.code==='Space'){e.preventDefault();if(!spaceDown){spaceDown=true;syncUI()}return}
   if(mod){
     if(lk==='z'){e.preventDefault();e.shiftKey?redo():undo()}
@@ -468,7 +565,7 @@ addEventListener('keydown',e=>{
   else if(k==='Enter'){const L=selected();if(L.length===1&&!L[0].points&&!L[0].start){e.preventDefault();startEdit(L[0])}}
   else if(!e.shiftKey&&TKEY[lk]){setTool(TKEY[lk])}
 });
-addEventListener('keyup',e=>{if(e.code==='Space'){spaceDown=false;if(e.target.tagName==='BUTTON')e.preventDefault();syncUI()}});
+addEventListener('keyup',e=>{if(e.code==='Space'){if(spaceDown&&e.target.tagName==='BUTTON')e.preventDefault();spaceDown=false;syncUI()}});
 addEventListener('blur',()=>{spaceDown=false});
 function delSel(noMark){if(!sel.size)return;if(!noMark)mark();shapes=shapes.filter(s=>!sel.has(s.id));sel.clear();changed()}
 function copy(){const L=selected();if(!L.length)return false;clip=cl(L);pasteN=0;return true}
@@ -477,7 +574,9 @@ function paste(){if(clip&&clip.length)insertClones(clip,16*++pasteN)}
 function dup(){const L=selected();if(L.length)insertClones(cl(L),16)}
 
 /* ---------- persistence ---------- */
-const docObj=()=>(shapes.forEach(s=>{if(s.type==='text'||s.type==='note')lay(s)}),{app:'lite-board',version:1,camera:{x:f(cam.x),y:f(cam.y),z:cam.z},shapes});
+const layAll=()=>{sync();for(const p of pages)for(const s of p.shapes)if(s.type==='text'||s.type==='note')lay(s)};
+const nShapes=()=>(sync(),pages.reduce((a,p)=>a+p.shapes.length,0));
+const docObj=()=>(layAll(),{app:'lite-board',version:2,current:cur,pages:pages.map(p=>({id:p.id,name:p.name,camera:p.camera&&{x:f(p.camera.x),y:f(p.camera.y),z:p.camera.z},shapes:p.shapes}))});
 let st=0,saveErr=false;
 function saveNow(){clearTimeout(st);try{localStorage.setItem(KEY,JSON.stringify(docObj()));saveErr=false}catch(_){if(!saveErr){saveErr=true;toast('자동 저장에 실패했습니다(브라우저 저장 공간 부족 또는 차단).',1)}}}
 function saveSoon(){clearTimeout(st);st=setTimeout(saveNow,400)}
@@ -494,21 +593,36 @@ function norm(s){
   if(s.wrap)o.wrap=true;if(s.poly&&s.type==='draw')o.poly=true;
   o.style=normStyle(s.style);return o;
 }
-function setDoc(list,camera,undoable){
+/* v1 {shapes,camera} -> one page; v2 {pages,current}. Returns {pages,current} or an error code string. */
+function docPages(o){
+  if(!o||o.app!=='lite-board')return null;
+  if(o.version===1)return Array.isArray(o.shapes)?{pages:[{name:'Page 1',shapes:o.shapes,camera:o.camera}]}:'schema';
+  if(o.version===2)return Array.isArray(o.pages)&&o.pages.length?{pages:o.pages,current:o.current}:'schema';
+  return'version';
+}
+function setDoc(raw,current,undoable){
   if(ed){ed=null;ta.style.display='none'}
   if(undoable)mark();
-  const seen=new Set();shapes=list.map(norm).filter(Boolean).map(s=>{if(seen.has(s.id))s.id=uid();seen.add(s.id);return s});
-  sel.clear();
-  if(camera&&Number.isFinite(+camera.z)&&+camera.z>0)cam={x:+camera.x||0,y:+camera.y||0,z:clampZ(+camera.z)};
-  changed();return shapes.length;
+  raw=raw.filter(p=>p&&typeof p==='object');
+  const seen=new Set(),pids=new Set();let n=0;
+  pages=raw.map((p,i)=>{
+    const id=typeof p.id==='string'&&p.id&&!pids.has(p.id)?p.id:pid();pids.add(id);
+    const sh=(Array.isArray(p.shapes)?p.shapes:[]).map(norm).filter(Boolean).map(s=>{if(seen.has(s.id))s.id=uid();seen.add(s.id);return s});n+=sh.length;
+    const c=p.camera,nm=typeof p.name==='string'&&p.name.trim()?p.name.trim().slice(0,60):'Page '+(i+1);
+    return{id,name:nm,shapes:sh,camera:c&&Number.isFinite(+c.z)&&+c.z>0?{x:+c.x||0,y:+c.y||0,z:clampZ(+c.z)}:null};
+  });
+  if(!pages.length)pages=[mkPage('Page 1')];
+  const ci=typeof current==='number'?current:raw.findIndex(p=>p.id===current);
+  drag=null;sel.clear();setCur(pages[ci>=0&&ci<pages.length?ci:0].id);
+  renderTabs();changed();return n;
 }
-function loadDoc(obj){if(!obj||obj.app!=='lite-board'||obj.version!==1||!Array.isArray(obj.shapes))return false;setDoc(obj.shapes,obj.camera,true);return true}
-function newDoc(){mark();shapes=[];sel.clear();cam={x:0,y:0,z:1};changed();toast('새 문서를 시작했습니다. Ctrl+Z로 되돌릴 수 있습니다.')}
+function loadDoc(obj){const d=docPages(obj);if(!d||typeof d!=='object')return false;setDoc(d.pages,d.current,true);return true}
+function newDoc(){if(ed)commitEdit();mark();pages=[mkPage('Page 1')];setCur(pages[0].id);sel.clear();renderTabs();changed();toast('새 문서를 시작했습니다. Ctrl+Z로 되돌릴 수 있습니다.')}
 
 /* ---------- export ---------- */
 function download(name,blob){const a=document.createElement('a'),u=URL.createObjectURL(blob);a.href=u;a.download=name;a.style.display='none';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),5000)}
 function exportJSON(){download('board.liteboard',new Blob([JSON.stringify(docObj(),null,1)],{type:'application/vnd.liteboard+json'}));toast('.liteboard 파일로 내보냈습니다.')}
-const selNote=()=>sel.size?' (선택 항목만)':'';
+const selNote=()=>` (${pg().name}${sel.size?', 선택 항목만':''})`;
 /* .tldr export — schema/props per a file saved from tldraw.com (record shapes verified by REA bundle analysis) */
 const TL_SCHEMA={schemaVersion:2,sequences:{'com.tldraw.store':5,'com.tldraw.asset':1,'com.tldraw.camera':1,'com.tldraw.document':2,'com.tldraw.instance':26,'com.tldraw.instance_page_state':5,'com.tldraw.page':1,'com.tldraw.instance_presence':6,'com.tldraw.pointer':1,'com.tldraw.shape':4,'com.tldraw.user':1,'com.tldraw.asset.image':6,'com.tldraw.asset.video':5,'com.tldraw.asset.bookmark':2,'com.tldraw.shape.group':0,'com.tldraw.shape.text':4,'com.tldraw.shape.bookmark':4,'com.tldraw.shape.draw':5,'com.tldraw.shape.geo':14,'com.tldraw.shape.note':15,'com.tldraw.shape.line':5,'com.tldraw.shape.frame':1,'com.tldraw.shape.arrow':8,'com.tldraw.shape.highlight':4,'com.tldraw.shape.embed':4,'com.tldraw.shape.image':7,'com.tldraw.shape.video':6,'com.tldraw.binding.arrow':1}};
 const B62='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
@@ -518,10 +632,11 @@ function encodePath(P){const u=new Uint8Array(8+(P.length-1)*4),dv=new DataView(
   for(let i=1;i<P.length;i++){const dx=P[i][0]-x,dy=P[i][1]-y,o=8+(i-1)*4;dv.setUint16(o,h16(dx),true);dv.setUint16(o+2,h16(dy),true);x+=f16(h16(dx));y+=f16(h16(dy))}
   let b='';for(let i=0;i<u.length;i++)b+=String.fromCharCode(u[i]);return btoa(b)}
 function tlRich(t){return{type:'doc',content:String(t||'').split('\n').map(l=>l?{type:'paragraph',content:[{type:'text',text:l}]}:{type:'paragraph'})}}
-function toTldr(list){
-  const recs=[{gridSize:10,name:'',meta:{},id:'document:document',typeName:'document'},{meta:{},id:'page:page',name:'Page 1',index:'a1',typeName:'page'}];
-  let i=1;const base=(type,x,y,props)=>({x:f(x),y:f(y),rotation:0,isLocked:false,opacity:1,meta:{},id:'shape:'+uid().replace(/^s_/,'')+i,type,props,parentId:'page:page',index:tlIndex(i++),typeName:'shape'});
-  for(const s of list){
+function toTldr(pl){
+  const recs=[{gridSize:10,name:'',meta:{},id:'document:document',typeName:'document'}];
+  let i=1,par='';const base=(type,x,y,props)=>({x:f(x),y:f(y),rotation:0,isLocked:false,opacity:1,meta:{},id:'shape:'+uid().replace(/^s_/,'')+i,type,props,parentId:par,index:tlIndex(i++),typeName:'shape'});
+  pl.forEach((p,k)=>{par='page:'+(k+1);recs.push({meta:{},id:par,name:p.name,index:tlIndex(k+1),typeName:'page'});
+  for(const s of p.shapes){
     const st=s.style,c=st.color,common={color:c,size:st.size};
     if(s.type==='rect'||s.type==='ellipse')recs.push(base('geo',s.x,s.y,{w:s.w,h:s.h,geo:s.type==='rect'?'rectangle':'ellipse',dash:st.dash,growY:0,url:'',scale:1,flipX:false,flipY:false,...common,labelColor:c,fill:st.fill,font:'sans',align:'middle',verticalAlign:'middle',richText:tlRich(s.text)}));
     else if(s.type==='text')recs.push(base('text',s.x,s.y,{...common,w:s.w,font:'sans',textAlign:'start',autoSize:!s.wrap,scale:1,richText:tlRich(s.text)}));
@@ -535,10 +650,13 @@ function toTldr(list){
       const P=s.points;let ox=1/0,oy=1/0;for(const p of P){ox=Math.min(ox,p[0]);oy=Math.min(oy,p[1])}
       recs.push(base('draw',ox,oy,{segments:[{type:'free',path:encodePath(P.map(p=>[p[0]-ox,p[1]-oy])),dim:2}],...common,fill:st.fill,dash:st.dash,isComplete:true,isClosed:false,isPen:false,scale:1,scaleX:1,scaleY:1}));
     }
-  }
+  }});
   return{tldrawFileFormatVersion:1,schema:TL_SCHEMA,records:recs};
 }
-function exportTldr(){const L=sel.size?selected():shapes;if(!L.length)return toast('내보낼 도형이 없습니다.',1);L.forEach(lay);download('board.tldr',new Blob([JSON.stringify(toTldr(L))],{type:'application/vnd.tldraw+json'}));toast(`.tldr 파일로 내보냈습니다${selNote()}.`)}
+function exportTldr(){
+  const one=sel.size>0,P=one?[{name:pg().name,shapes:selected()}]:pages;if(!(one||nShapes()))return toast('내보낼 도형이 없습니다.',1);
+  layAll();download('board.tldr',new Blob([JSON.stringify(toTldr(P))],{type:'application/vnd.tldraw+json'}));toast(`.tldr 파일로 내보냈습니다${one?selNote():` (${P.length}개 페이지)`}.`);
+}
 function svgString(){
   const L=sel.size?selected():shapes;if(!L.length)return null;
   L.forEach(lay);const b=union(L),pad=32+Math.max(...L.map(s=>SW[s.style.size]||3)),x=f(b.x-pad),y=f(b.y-pad),w=Math.ceil(b.w+pad*2),h=Math.ceil(b.h+pad*2);
@@ -561,14 +679,16 @@ function importText(text,filename){
   let o;
   try{o=JSON.parse(text)}catch(_){toast(`열 수 없는 파일입니다${filename?` (${filename})`:''}: JSON 형식이 아닙니다.`,1);return{ok:false,error:'parse'}}
   if(o&&o.app==='lite-board'){
-    if(o.version!==1){toast(`지원하지 않는 lite-board 버전입니다 (version: ${o.version==null?'없음':o.version}).`,1);return{ok:false,error:'version'}}
-    if(!Array.isArray(o.shapes)){toast('lite-board 파일의 shapes가 올바르지 않습니다.',1);return{ok:false,error:'schema'}}
-    const n=setDoc(o.shapes,o.camera,true);fit();toast(`${n}개 도형을 불러왔습니다.`);return{ok:true,imported:n,skipped:o.shapes.length-n};
+    const d=docPages(o);
+    if(d==='version'){toast(`지원하지 않는 lite-board 버전입니다 (version: ${o.version==null?'없음':o.version}).`,1);return{ok:false,error:'version'}}
+    if(d==='schema'){toast(`lite-board 파일의 ${o.version===1?'shapes':'pages'}가 올바르지 않습니다.`,1);return{ok:false,error:'schema'}}
+    const tot=d.pages.reduce((a,p)=>a+(p&&Array.isArray(p.shapes)?p.shapes.length:0),0),n=setDoc(d.pages,d.current,true);fit();
+    toast(`${pages.length>1?pages.length+'개 페이지, ':''}${n}개 도형을 불러왔습니다.`);return{ok:true,imported:n,skipped:tot-n,pages:pages.length};
   }
   if(o&&!Array.isArray(o.records)&&o.document&&o.document.version!=null){toast('지원하지 않는 구버전 .tldr 파일입니다.',1);return{ok:false,error:'old-tldr'}}
   if(o&&Array.isArray(o.records)){
-    const r=fromTldr(o);setDoc(r.shapes,null,true);fit();
-    const n=shapes.length;toast(`${n}개 도형을 가져왔고 ${r.skipped}개는 지원하지 않아 건너뜀${r.other?` (다른 페이지 도형 ${r.other}개 제외)`:''}`);return{ok:true,imported:n,skipped:r.skipped,otherPage:r.other};
+    const r=fromTldr(o),n=setDoc(r.pages,0,true);fit();
+    toast(`${pages.length}개 페이지, ${n}개 도형을 가져왔고 ${r.skipped}개는 지원하지 않아 건너뜀`);return{ok:true,imported:n,skipped:r.skipped,pages:pages.length};
   }
   toast('지원하지 않는 파일 형식입니다.',1);return{ok:false,error:'format'};
 }
@@ -615,25 +735,27 @@ function conv(s,ox,oy){
 }
 function fromTldr(file){
   const recs=file.records.filter(r=>r&&typeof r==='object');
-  const pages=recs.filter(r=>r.typeName==='page').sort((a,b)=>cmp(a.index,b.index));
-  const pageId=pages.length?pages[0].id:null;
+  const pgs=recs.filter(r=>r.typeName==='page').sort((a,b)=>cmp(a.index,b.index));
+  const pm=new Map(pgs.map((p,i)=>[p.id,{name:typeof p.name==='string'&&p.name.trim()?p.name:'Page '+(i+1),list:[]}])),one=pm.size?null:{name:'Page 1',list:[]};
   const byId=new Map(recs.filter(r=>r.typeName==='shape').map(r=>[r.id,r]));
-  const list=[];let other=0;
+  let skipped=0;
   for(const s of byId.values()){
     let ox=0,oy=0,keys=[s.index],par=s.parentId,g=0;
     while(par&&byId.has(par)&&g++<64){const q=byId.get(par);ox+=+q.x||0;oy+=+q.y||0;keys.unshift(q.index);par=q.parentId}
-    if(pageId&&par!==pageId){other++;continue}
-    list.push({s,ox,oy,keys});
+    const t=one||pm.get(par);if(!t){skipped++;continue}
+    t.list.push({s,ox,oy,keys});
   }
-  list.sort((a,b)=>{for(let i=0;i<Math.min(a.keys.length,b.keys.length);i++){const c=cmp(a.keys[i],b.keys[i]);if(c)return c}return a.keys.length-b.keys.length});
-  const out=[];let skipped=0;
-  for(const{s,ox,oy}of list){if(s.type==='group')continue;const r=conv(s,ox,oy);if(r)out.push(r);else skipped++}
-  return{shapes:out,skipped,other};
+  const out=(one?[one]:[...pm.values()]).map(p=>{
+    p.list.sort((a,b)=>{for(let i=0;i<Math.min(a.keys.length,b.keys.length);i++){const c=cmp(a.keys[i],b.keys[i]);if(c)return c}return a.keys.length-b.keys.length});
+    const sh=[];for(const{s,ox,oy}of p.list){if(s.type==='group')continue;const r=conv(s,ox,oy);if(r)sh.push(r);else skipped++}
+    return{name:p.name,shapes:sh};
+  });
+  return{pages:out,skipped};
 }
 
 /* ---------- share via URL (no server: whole board deflated into the #fragment, never sent to any server) ---------- */
 const r1=v=>Math.round(v*10)/10;
-function shareObj(){shapes.forEach(s=>{if(s.type==='text'||s.type==='note')lay(s)});return{app:'lite-board',version:1,shapes:shapes.map(s=>{const o={...s};delete o.id;if(o.points)o.points=o.points.map(p=>[r1(p[0]),r1(p[1])]);return o})}}
+function shareObj(){layAll();return{app:'lite-board',version:2,current:pages.findIndex(p=>p.id===cur),pages:pages.map(p=>({name:p.name,shapes:p.shapes.map(s=>{const o={...s};delete o.id;if(o.points)o.points=o.points.map(p=>[r1(p[0]),r1(p[1])]);return o})}))}}
 const b64u=u8=>{let b='';for(let i=0;i<u8.length;i+=32768)b+=String.fromCharCode.apply(null,u8.subarray(i,i+32768));return btoa(b).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')};
 const ub64u=s=>{s=s.replace(/-/g,'+').replace(/_/g,'/');const b=atob(s+'==='.slice((s.length+3)%4));const u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u};
 async function pipe(u8,stream){return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(stream)).arrayBuffer())}
@@ -641,7 +763,7 @@ async function encodeShare(obj){return b64u(await pipe(new TextEncoder().encode(
 async function decodeShare(s){return JSON.parse(new TextDecoder().decode(await pipe(ub64u(s),new DecompressionStream('deflate-raw'))))}
 async function copyText(t){try{await navigator.clipboard.writeText(t);return true}catch(_){}try{const a=document.createElement('textarea');a.value=t;a.style.cssText='position:fixed;opacity:0';document.body.appendChild(a);a.select();const ok=document.execCommand('copy');a.remove();return ok}catch(_){return false}}
 async function shareLink(){
-  if(!shapes.length){toast('공유할 도형이 없습니다.',1);return null}
+  if(!nShapes()){toast('공유할 도형이 없습니다.',1);return null}
   let url;try{url=location.href.split('#')[0]+'#b='+await encodeShare(shareObj())}catch(_){toast('이 브라우저에서는 링크 공유를 만들 수 없습니다.',1);return null}
   const ok=await copyText(url),kb=Math.ceil(url.length/1024);
   if(!ok)history.replaceState(null,'',url);
@@ -652,17 +774,21 @@ async function openShared(){
   const m=/[#&]b=([A-Za-z0-9_-]+)/.exec(location.hash);if(!m)return false;
   history.replaceState(null,'',location.href.split('#')[0]);
   try{
-    const o=await decodeShare(m[1]);if(!o||o.app!=='lite-board'||o.version!==1||!Array.isArray(o.shapes))throw 0;
-    try{const cur=localStorage.getItem(KEY);if(cur)localStorage.setItem(KEY+':before-share',cur)}catch(_){}
-    const n=setDoc(o.shapes,null,true);fit();toast(`공유된 보드를 열었습니다(${n}개 도형). Ctrl+Z로 원래 보드로 돌아갈 수 있습니다.`);return true;
+    const d=docPages(await decodeShare(m[1]));if(!d||typeof d!=='object')throw 0;
+    try{saveNow();const v=localStorage.getItem(KEY);if(v)localStorage.setItem(KEY+':before-share',v)}catch(_){}
+    const n=setDoc(d.pages.map(p=>p&&Object.assign({},p,{camera:null})),d.current,true);fit();toast(`공유된 보드를 열었습니다(${pages.length>1?pages.length+'개 페이지, ':''}${n}개 도형). Ctrl+Z로 원래 보드로 돌아갈 수 있습니다.`);return true;
   }catch(_){toast('공유 링크가 손상되었거나 잘렸습니다.',1);return false}
 }
 addEventListener('hashchange',openShared);
 
 /* ---------- boot ---------- */
-try{const o=JSON.parse(localStorage.getItem(KEY)||'null');if(o&&o.app==='lite-board'&&Array.isArray(o.shapes))setDoc(o.shapes,o.camera,false)}catch(_){}
-render();openShared();
-window.__board={getDoc:()=>cl(docObj()),loadDoc:o=>loadDoc(o),importText:(t,n)=>importText(t,n),toTldr:()=>{shapes.forEach(lay);return toTldr(shapes)},shareLink:()=>shareLink()};
+try{const raw=localStorage.getItem(KEY),o=JSON.parse(raw||'null'),d=docPages(o);
+  if(d&&typeof d==='object'){if(o.version===1&&!localStorage.getItem(KEY+':v1-backup'))localStorage.setItem(KEY+':v1-backup',raw);setDoc(d.pages,d.current,false)}
+  else if(raw)localStorage.setItem(KEY+':unreadable-backup',raw)}catch(_){}
+renderTabs();placeTabs();render();openShared();
+window.__board={getDoc:()=>cl(docObj()),loadDoc:o=>loadDoc(o),importText:(t,n)=>importText(t,n),toTldr:()=>{layAll();return toTldr(pages)},shareLink:()=>shareLink(),
+  addPage:n=>addPage(n),switchPage:v=>{const p=typeof v==='number'?pages[v]:pages.find(p=>p.id===v);if(p)goPage(p.id);return!!p},
+  pages:()=>(sync(),pages.map(p=>({id:p.id,name:p.name,count:p.shapes.length})))};
 })();
 </script>
 </body>

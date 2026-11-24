@@ -1,261 +1,357 @@
 {
  "app": "lite-board",
- "version": 1,
- "camera": {
-  "x": 40,
-  "y": 40,
-  "z": 1
- },
- "shapes": [
+ "version": 2,
+ "current": "p_main",
+ "pages": [
   {
-   "style": {
-    "color": "blue",
-    "fill": "semi",
-    "dash": "draw",
-    "size": "m"
+   "id": "p_main",
+   "name": "Page 1",
+   "camera": {
+    "x": 40,
+    "y": 40,
+    "z": 1
    },
-   "id": "s_rect1",
-   "type": "rect",
-   "x": 0,
-   "y": 0,
-   "w": 200,
-   "h": 120,
-   "text": "Rectangle"
-  },
-  {
-   "style": {
-    "color": "grey",
-    "fill": "none",
-    "dash": "dashed",
-    "size": "s"
-   },
-   "id": "s_rect2",
-   "type": "rect",
-   "x": 0,
-   "y": 160,
-   "w": 160,
-   "h": 90
-  },
-  {
-   "style": {
-    "color": "red",
-    "fill": "solid",
-    "dash": "solid",
-    "size": "l"
-   },
-   "id": "s_ell1",
-   "type": "ellipse",
-   "x": 260,
-   "y": 0,
-   "w": 180,
-   "h": 120
-  },
-  {
-   "style": {
-    "color": "violet",
-    "fill": "none",
-    "dash": "dotted",
-    "size": "m"
-   },
-   "id": "s_ell2",
-   "type": "ellipse",
-   "x": 260,
-   "y": 160,
-   "w": 100,
-   "h": 100
-  },
-  {
-   "style": {
-    "color": "orange",
-    "fill": "none",
-    "dash": "draw",
-    "size": "m"
-   },
-   "id": "s_draw1",
-   "type": "draw",
-   "points": [
-    [
-     500,
-     40
-    ],
-    [
-     530,
-     10
-    ],
-    [
-     560,
-     50
-    ],
-    [
-     590,
-     15
-    ],
-    [
-     620,
-     45
-    ]
+   "shapes": [
+    {
+     "style": {
+      "color": "blue",
+      "fill": "semi",
+      "dash": "draw",
+      "size": "m"
+     },
+     "id": "s_rect1",
+     "type": "rect",
+     "x": 0,
+     "y": 0,
+     "w": 200,
+     "h": 120,
+     "text": "Rectangle"
+    },
+    {
+     "style": {
+      "color": "grey",
+      "fill": "none",
+      "dash": "dashed",
+      "size": "s"
+     },
+     "id": "s_rect2",
+     "type": "rect",
+     "x": 0,
+     "y": 160,
+     "w": 160,
+     "h": 90
+    },
+    {
+     "style": {
+      "color": "red",
+      "fill": "solid",
+      "dash": "solid",
+      "size": "l"
+     },
+     "id": "s_ell1",
+     "type": "ellipse",
+     "x": 260,
+     "y": 0,
+     "w": 180,
+     "h": 120
+    },
+    {
+     "style": {
+      "color": "violet",
+      "fill": "none",
+      "dash": "dotted",
+      "size": "m"
+     },
+     "id": "s_ell2",
+     "type": "ellipse",
+     "x": 260,
+     "y": 160,
+     "w": 100,
+     "h": 100
+    },
+    {
+     "style": {
+      "color": "orange",
+      "fill": "none",
+      "dash": "draw",
+      "size": "m"
+     },
+     "id": "s_draw1",
+     "type": "draw",
+     "points": [
+      [
+       500,
+       40
+      ],
+      [
+       530,
+       10
+      ],
+      [
+       560,
+       50
+      ],
+      [
+       590,
+       15
+      ],
+      [
+       620,
+       45
+      ]
+     ]
+    },
+    {
+     "style": {
+      "color": "green",
+      "fill": "none",
+      "dash": "draw",
+      "size": "xl"
+     },
+     "id": "s_draw2",
+     "type": "draw",
+     "points": [
+      [
+       500,
+       120
+      ],
+      [
+       520,
+       150
+      ],
+      [
+       560,
+       160
+      ],
+      [
+       600,
+       130
+      ]
+     ]
+    },
+    {
+     "style": {
+      "color": "black",
+      "fill": "none",
+      "dash": "draw",
+      "size": "m"
+     },
+     "id": "s_arrow1",
+     "type": "arrow",
+     "start": {
+      "x": 200,
+      "y": 60
+     },
+     "end": {
+      "x": 255,
+      "y": 60
+     }
+    },
+    {
+     "style": {
+      "color": "light-blue",
+      "fill": "none",
+      "dash": "dashed",
+      "size": "m"
+     },
+     "id": "s_arrow2",
+     "type": "arrow",
+     "start": {
+      "x": 360,
+      "y": 210
+     },
+     "end": {
+      "x": 480,
+      "y": 280
+     }
+    },
+    {
+     "style": {
+      "color": "black",
+      "fill": "none",
+      "dash": "solid",
+      "size": "s"
+     },
+     "id": "s_line1",
+     "type": "line",
+     "start": {
+      "x": 0,
+      "y": 300
+     },
+     "end": {
+      "x": 200,
+      "y": 300
+     }
+    },
+    {
+     "style": {
+      "color": "light-red",
+      "fill": "none",
+      "dash": "dotted",
+      "size": "l"
+     },
+     "id": "s_line2",
+     "type": "line",
+     "start": {
+      "x": 0,
+      "y": 330
+     },
+     "end": {
+      "x": 200,
+      "y": 360
+     }
+    },
+    {
+     "style": {
+      "color": "black",
+      "fill": "none",
+      "dash": "draw",
+      "size": "m"
+     },
+     "id": "s_text1",
+     "type": "text",
+     "x": 0,
+     "y": 400,
+     "w": 200,
+     "h": 39,
+     "text": "Hello lite-board"
+    },
+    {
+     "style": {
+      "color": "violet",
+      "fill": "none",
+      "dash": "draw",
+      "size": "s"
+     },
+     "id": "s_text2",
+     "type": "text",
+     "x": 0,
+     "y": 460,
+     "w": 160,
+     "h": 60,
+     "text": "Wrapped text inside a fixed width box",
+     "wrap": true
+    },
+    {
+     "style": {
+      "color": "yellow",
+      "fill": "none",
+      "dash": "draw",
+      "size": "m"
+     },
+     "id": "s_note1",
+     "type": "note",
+     "x": 660,
+     "y": 0,
+     "w": 200,
+     "h": 200,
+     "text": "Sticky note"
+    },
+    {
+     "style": {
+      "color": "light-green",
+      "fill": "none",
+      "dash": "draw",
+      "size": "s"
+     },
+     "id": "s_note2",
+     "type": "note",
+     "x": 660,
+     "y": 230,
+     "w": 200,
+     "h": 200,
+     "text": "Another note\nwith two lines"
+    }
    ]
   },
   {
-   "style": {
-    "color": "green",
-    "fill": "none",
-    "dash": "draw",
-    "size": "xl"
+   "id": "p_ideas",
+   "name": "Ideas",
+   "camera": {
+    "x": 40,
+    "y": 40,
+    "z": 1
    },
-   "id": "s_draw2",
-   "type": "draw",
-   "points": [
-    [
-     500,
-     120
-    ],
-    [
-     520,
-     150
-    ],
-    [
-     560,
-     160
-    ],
-    [
-     600,
-     130
-    ]
+   "shapes": [
+    {
+     "style": {
+      "color": "yellow",
+      "fill": "none",
+      "dash": "draw",
+      "size": "m"
+     },
+     "id": "s_idea_note1",
+     "type": "note",
+     "x": 0,
+     "y": 0,
+     "w": 200,
+     "h": 200,
+     "text": "Idea 1\nSheet tabs"
+    },
+    {
+     "style": {
+      "color": "light-blue",
+      "fill": "none",
+      "dash": "draw",
+      "size": "m"
+     },
+     "id": "s_idea_note2",
+     "type": "note",
+     "x": 280,
+     "y": 0,
+     "w": 200,
+     "h": 200,
+     "text": "Idea 2\nDrag to reorder"
+    },
+    {
+     "style": {
+      "color": "black",
+      "fill": "none",
+      "dash": "draw",
+      "size": "m"
+     },
+     "id": "s_idea_arrow",
+     "type": "arrow",
+     "start": {
+      "x": 205,
+      "y": 100
+     },
+     "end": {
+      "x": 275,
+      "y": 100
+     }
+    },
+    {
+     "style": {
+      "color": "violet",
+      "fill": "semi",
+      "dash": "solid",
+      "size": "m"
+     },
+     "id": "s_idea_box",
+     "type": "rect",
+     "x": 0,
+     "y": 250,
+     "w": 480,
+     "h": 80,
+     "text": "Brainstorm"
+    },
+    {
+     "style": {
+      "color": "black",
+      "fill": "none",
+      "dash": "draw",
+      "size": "l"
+     },
+     "id": "s_idea_title",
+     "type": "text",
+     "x": 0,
+     "y": -70,
+     "w": 120,
+     "h": 52,
+     "text": "Ideas"
+    }
    ]
-  },
-  {
-   "style": {
-    "color": "black",
-    "fill": "none",
-    "dash": "draw",
-    "size": "m"
-   },
-   "id": "s_arrow1",
-   "type": "arrow",
-   "start": {
-    "x": 200,
-    "y": 60
-   },
-   "end": {
-    "x": 255,
-    "y": 60
-   }
-  },
-  {
-   "style": {
-    "color": "light-blue",
-    "fill": "none",
-    "dash": "dashed",
-    "size": "m"
-   },
-   "id": "s_arrow2",
-   "type": "arrow",
-   "start": {
-    "x": 360,
-    "y": 210
-   },
-   "end": {
-    "x": 480,
-    "y": 280
-   }
-  },
-  {
-   "style": {
-    "color": "black",
-    "fill": "none",
-    "dash": "solid",
-    "size": "s"
-   },
-   "id": "s_line1",
-   "type": "line",
-   "start": {
-    "x": 0,
-    "y": 300
-   },
-   "end": {
-    "x": 200,
-    "y": 300
-   }
-  },
-  {
-   "style": {
-    "color": "light-red",
-    "fill": "none",
-    "dash": "dotted",
-    "size": "l"
-   },
-   "id": "s_line2",
-   "type": "line",
-   "start": {
-    "x": 0,
-    "y": 330
-   },
-   "end": {
-    "x": 200,
-    "y": 360
-   }
-  },
-  {
-   "style": {
-    "color": "black",
-    "fill": "none",
-    "dash": "draw",
-    "size": "m"
-   },
-   "id": "s_text1",
-   "type": "text",
-   "x": 0,
-   "y": 400,
-   "w": 200,
-   "h": 39,
-   "text": "Hello lite-board"
-  },
-  {
-   "style": {
-    "color": "violet",
-    "fill": "none",
-    "dash": "draw",
-    "size": "s"
-   },
-   "id": "s_text2",
-   "type": "text",
-   "x": 0,
-   "y": 460,
-   "w": 160,
-   "h": 60,
-   "text": "Wrapped text inside a fixed width box",
-   "wrap": true
-  },
-  {
-   "style": {
-    "color": "yellow",
-    "fill": "none",
-    "dash": "draw",
-    "size": "m"
-   },
-   "id": "s_note1",
-   "type": "note",
-   "x": 660,
-   "y": 0,
-   "w": 200,
-   "h": 200,
-   "text": "Sticky note"
-  },
-  {
-   "style": {
-    "color": "light-green",
-    "fill": "none",
-    "dash": "draw",
-    "size": "s"
-   },
-   "id": "s_note2",
-   "type": "note",
-   "x": 660,
-   "y": 230,
-   "w": 200,
-   "h": 200,
-   "text": "Another note\nwith two lines"
   }
  ]
 }

@@ -41,7 +41,7 @@ tldraw.com과 같은 장르(무한 캔버스 화이트보드)의 **아주 가벼
 ## `.tldr` 포맷 (REA로 tldraw.com 번들에서 확인한 근거)
 - 파일: 확장자 `.tldr`, MIME `application/vnd.tldraw+json`. 최상위 `{tldrawFileFormatVersion: 1, schema: {schemaVersion: 1|2, ...}, records: [{id, typeName, ...}]}`. `document.version`만 있는 구버전(v1) 파일은 "지원하지 않는 구버전" 오류로 처리.
 - 레코드 `typeName`: `document`, `page`, `shape`, `binding`, `asset`, `camera`, `instance` 등. 도형은 `typeName:"shape"`이며 공통 필드 `id`("shape:..."), `type`, `x`, `y`, `rotation`(라디안), `index`(정렬 키 문자열 — 문자열 비교로 정렬), `parentId`(`page:...` 또는 `shape:...` 그룹/프레임), `opacity`, `props`.
-- 여러 페이지가 있으면 첫 페이지(`page` 레코드 중 `index`가 가장 작은 것)만 가져온다. 부모가 그룹/프레임인 도형은 부모의 x,y를 누적해 페이지 좌표로 변환(회전은 무시해도 됨).
+- 여러 페이지가 있으면 모든 페이지를 `index` 순서로 가져온다(아래 "여러 페이지" 참고). 부모가 그룹/프레임인 도형은 부모의 x,y를 누적해 페이지 좌표로 변환(회전은 무시해도 됨).
 - 스타일 enum: color `black, grey, light-violet, violet, blue, light-blue, yellow, orange, green, light-green, light-red, red, white`, fill `none, semi, solid, pattern, fill, lined-fill`(none/semi/solid 외는 solid로), dash `draw, solid, dashed, dotted`, size `s, m, l, xl`. props.scale가 있으면 크기에 곱한다.
 - `geo`: props `{geo, w, h, growY, color, fill, dash, size, richText, ...}`. `geo:"ellipse"|"oval"` → ellipse, 나머지(rectangle, triangle, diamond, star, cloud …) → rect. 높이는 `h + growY`. richText 라벨이 있으면 무시하거나 rect의 text로 넣어도 됨.
 - `text`: props `{richText, color, size, scale, w, autoSize, textAlign}` → text.
@@ -73,7 +73,14 @@ tldraw.com과 같은 장르(무한 캔버스 화이트보드)의 **아주 가벼
 - 그 외(`image`, `video`, `frame`, `group`, `embed`, `bookmark` 등)는 건너뜀(그룹/프레임은 자식 좌표 계산에만 사용).
 
 ## 비목표
-멀티플레이어, 공유, 로그인, 페이지 여러 개, 회전, 이미지/미디어, 화살표 바인딩.
+멀티플레이어, 로그인, 회전, 이미지/미디어, 화살표 바인딩. (링크 공유와 여러 페이지는 아래 추가 기능으로 지원)
+
+## 추가: 여러 페이지(시트 탭)
+- 문서 = 순서 있는 페이지 목록 `{id, name, shapes, camera}` + 현재 페이지 id. 편집·선택·실행취소·자동 저장·맞춤·지우개·클립보드는 현재 페이지 기준. 페이지마다 카메라를 따로 유지.
+- 화면 하단(좌하단 실행취소/줌 패널 오른쪽)에 스프레드시트식 탭 줄: 클릭 이동, 더블클릭 이름 변경, `+` 추가(`Page N`), `×` 삭제(마지막 한 장은 불가), 드래그로 순서 변경, `Alt+PageDown/PageUp`(또는 `Ctrl+PageDown/PageUp`) 이동. 탭이 많으면 가로 스크롤.
+- 페이지 추가·삭제·이름 변경·순서 변경과 모든 페이지의 도형 편집은 실행취소 대상. 다른 페이지의 편집을 되돌리면 그 페이지로 이동. 페이지 이동은 실행취소 단계가 아님.
+- `.liteboard` v2: `{app:"lite-board", version:2, current:<pageId>, pages:[{id,name,camera,shapes}]}`. v1(단일 `shapes`)은 `Page 1` 한 장으로 읽음. localStorage 자동 저장도 v2(기존 v1 값은 로드 시 변환).
+- `.tldr` 가져오기는 모든 페이지(`index` 순), 내보내기는 모든 페이지를 `page:<n>` 레코드로. 공유 링크는 모든 페이지를 담고 v1 링크도 해석. SVG/PNG는 현재 페이지(또는 선택)만.
 
 ## 추가: `.tldr` 내보내기
 tldraw.com에서 저장한 실제 파일(`samples/tldraw-real.tldr`)의 `schema`와 도형별 props를 그대로 따라 만든다. 선택이 있으면 선택한 도형만 내보낸다.

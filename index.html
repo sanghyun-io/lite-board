@@ -81,7 +81,7 @@ button[aria-pressed=true]{background:var(--acc);color:var(--panel)}
 'use strict';
 const $=s=>document.querySelector(s);
 const COLORS=['black','grey','light-violet','violet','blue','light-blue','yellow','orange','green','light-green','light-red','red'];
-const FILLS=['none','semi','solid'],DASHES=['draw','dashed','dotted','solid'],SIZES=['s','m','l','xl'];
+const FILLS=['none','semi','solid'],DASHES=['solid','draw','dashed','dotted'],SIZES=['s','m','l','xl'];
 const TYPES=['rect','ellipse','draw','arrow','line','text','note'];
 const PAL_L={black:'#1e1f24',grey:'#868b94','light-violet':'#c58df0',violet:'#7c3fc9',blue:'#2f5fe0','light-blue':'#3fa7e8',yellow:'#e2a600',orange:'#ec7420',green:'#178a4c','light-green':'#5cc25a','light-red':'#f07285',red:'#d9302c'};
 const PAL_D=Object.assign({},PAL_L,{black:'#e9e9ec',grey:'#9ba0a8',violet:'#a06ee8',blue:'#5b82f0',green:'#2fae68'});
@@ -103,7 +103,7 @@ const TOOLS=[
 ['ellipse','Ellipse','O','<ellipse cx="10" cy="10" rx="7" ry="5.5"/>']];
 const TKEY={};TOOLS.forEach(t=>TKEY[t[2].toLowerCase()]=t[0]);
 
-let shapes=[],cam={x:0,y:0,z:1},sel=new Set(),tool='select',style={color:'black',fill:'none',dash:'draw',size:'m'};
+let shapes=[],cam={x:0,y:0,z:1},sel=new Set(),tool='select',style={color:'black',fill:'none',dash:'solid',size:'m'};
 let undoS=[],redoS=[],clip=null,pasteN=0,drag=null,ed=null,spaceDown=false,erasing=new Set(),pinch=null;
 const ptrs=new Map();
 const svg=$('#cv'),world=$('#world'),ov=$('#ov'),stage=$('#stage'),ta=$('#ta');
@@ -477,7 +477,7 @@ function saveNow(){clearTimeout(st);try{localStorage.setItem(KEY,JSON.stringify(
 function saveSoon(){clearTimeout(st);st=setTimeout(saveNow,400)}
 addEventListener('pagehide',saveNow);document.addEventListener('visibilitychange',()=>{if(document.hidden)saveNow()});
 function changed(){render();saveSoon()}
-function normStyle(o){o=o||{};return{color:COLORS.includes(o.color)?o.color:'black',fill:FILLS.includes(o.fill)?o.fill:'none',dash:DASHES.includes(o.dash)?o.dash:'draw',size:SIZES.includes(o.size)?o.size:'m'}}
+function normStyle(o){o=o||{};return{color:COLORS.includes(o.color)?o.color:'black',fill:FILLS.includes(o.fill)?o.fill:'none',dash:DASHES.includes(o.dash)?o.dash:'solid',size:SIZES.includes(o.size)?o.size:'m'}}
 function norm(s){
   if(!s||!TYPES.includes(s.type))return null;
   const n=v=>Number.isFinite(+v)?+v:0,o={id:typeof s.id==='string'&&s.id?s.id:uid(),type:s.type};

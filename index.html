@@ -54,6 +54,8 @@ button[aria-pressed=true]{background:var(--acc);color:var(--panel)}
 <button id="mTldr" aria-label="Export .tldr" title="Export .tldr (tldraw compatible)">.tldr</button>
 <button id="mSvg" aria-label="Export SVG" title="Export SVG">SVG</button>
 <button id="mPng" aria-label="Export PNG" title="Export PNG">PNG</button>
+<span class="sep"></span>
+<button id="mShare" aria-label="Share link" title="공유 링크 복사 (보드 전체가 URL에 담김, 서버 저장 없음)"><b>Share</b></button>
 </div>
 <div id="tools" class="pn ic" role="toolbar" aria-label="Tools"></div>
 <div id="style" class="pn" aria-label="Style panel">
@@ -279,7 +281,7 @@ function applyStyle(k,v){style[k]=v;const L=selected();if(L.length){mark();for(c
 $('#bUndo').onclick=undo;$('#bRedo').onclick=redo;
 $('#bIn').onclick=()=>zoomBy(1.25);$('#bOut').onclick=()=>zoomBy(.8);$('#zl').onclick=()=>zoomTo(1);$('#bFit').onclick=fit;
 $('#mNew').onclick=newDoc;$('#mOpen').onclick=()=>$('#file').click();
-$('#mJson').onclick=exportJSON;$('#mTldr').onclick=exportTldr;$('#mSvg').onclick=exportSVG;$('#mPng').onclick=exportPNG;
+$('#mShare').onclick=()=>shareLink();$('#mJson').onclick=exportJSON;$('#mTldr').onclick=exportTldr;$('#mSvg').onclick=exportSVG;$('#mPng').onclick=exportPNG;
 $('#file').onchange=e=>{const fl=e.target.files[0];if(fl)readFile(fl);e.target.value=''};
 
 /* ---------- camera ---------- */
@@ -620,10 +622,38 @@ function fromTldr(file){
   return{shapes:out,skipped,other};
 }
 
+/* ---------- share via URL (no server: whole board deflated into the #fragment, never sent to any server) ---------- */
+const r1=v=>Math.round(v*10)/10;
+function shareObj(){shapes.forEach(s=>{if(s.type==='text'||s.type==='note')lay(s)});return{app:'lite-board',version:1,shapes:shapes.map(s=>{const o={...s};delete o.id;if(o.points)o.points=o.points.map(p=>[r1(p[0]),r1(p[1])]);return o})}}
+const b64u=u8=>{let b='';for(let i=0;i<u8.length;i+=32768)b+=String.fromCharCode.apply(null,u8.subarray(i,i+32768));return btoa(b).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')};
+const ub64u=s=>{s=s.replace(/-/g,'+').replace(/_/g,'/');const b=atob(s+'==='.slice((s.length+3)%4));const u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u};
+async function pipe(u8,stream){return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(stream)).arrayBuffer())}
+async function encodeShare(obj){return b64u(await pipe(new TextEncoder().encode(JSON.stringify(obj)),new CompressionStream('deflate-raw')))}
+async function decodeShare(s){return JSON.parse(new TextDecoder().decode(await pipe(ub64u(s),new DecompressionStream('deflate-raw'))))}
+async function copyText(t){try{await navigator.clipboard.writeText(t);return true}catch(_){}try{const a=document.createElement('textarea');a.value=t;a.style.cssText='position:fixed;opacity:0';document.body.appendChild(a);a.select();const ok=document.execCommand('copy');a.remove();return ok}catch(_){return false}}
+async function shareLink(){
+  if(!shapes.length){toast('공유할 도형이 없습니다.',1);return null}
+  let url;try{url=location.href.split('#')[0]+'#b='+await encodeShare(shareObj())}catch(_){toast('이 브라우저에서는 링크 공유를 만들 수 없습니다.',1);return null}
+  const ok=await copyText(url),kb=Math.ceil(url.length/1024);
+  if(!ok)history.replaceState(null,'',url);
+  toast((ok?'공유 링크를 복사했습니다':'복사에 실패해 주소창에 링크를 넣었습니다. 주소창에서 복사하세요')+` (${kb}KB)${kb>32?'. 링크가 길어 일부 메신저에서 잘릴 수 있습니다':''}.`,!ok);
+  return url;
+}
+async function openShared(){
+  const m=/[#&]b=([A-Za-z0-9_-]+)/.exec(location.hash);if(!m)return false;
+  history.replaceState(null,'',location.href.split('#')[0]);
+  try{
+    const o=await decodeShare(m[1]);if(!o||o.app!=='lite-board'||o.version!==1||!Array.isArray(o.shapes))throw 0;
+    try{const cur=localStorage.getItem(KEY);if(cur)localStorage.setItem(KEY+':before-share',cur)}catch(_){}
+    const n=setDoc(o.shapes,null,true);fit();toast(`공유된 보드를 열었습니다(${n}개 도형). Ctrl+Z로 원래 보드로 돌아갈 수 있습니다.`);return true;
+  }catch(_){toast('공유 링크가 손상되었거나 잘렸습니다.',1);return false}
+}
+addEventListener('hashchange',openShared);
+
 /* ---------- boot ---------- */
 try{const o=JSON.parse(localStorage.getItem(KEY)||'null');if(o&&o.app==='lite-board'&&Array.isArray(o.shapes))setDoc(o.shapes,o.camera,false)}catch(_){}
-render();
-window.__board={getDoc:()=>cl(docObj()),loadDoc:o=>loadDoc(o),importText:(t,n)=>importText(t,n),toTldr:()=>{shapes.forEach(lay);return toTldr(shapes)}};
+render();openShared();
+window.__board={getDoc:()=>cl(docObj()),loadDoc:o=>loadDoc(o),importText:(t,n)=>importText(t,n),toTldr:()=>{shapes.forEach(lay);return toTldr(shapes)},shareLink:()=>shareLink()};
 })();
 </script>
 </body>

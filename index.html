@@ -51,6 +51,7 @@ button[aria-pressed=true]{background:var(--acc);color:var(--panel)}
 <button id="mOpen" aria-label="Open file" title="Open file (.liteboard / .json / .tldr)">Open</button>
 <span class="sep"></span>
 <button id="mJson" aria-label="Export .liteboard" title="Export .liteboard (Ctrl+S)">Export .liteboard</button>
+<button id="mTldr" aria-label="Export .tldr" title="Export .tldr (tldraw compatible)">.tldr</button>
 <button id="mSvg" aria-label="Export SVG" title="Export SVG">SVG</button>
 <button id="mPng" aria-label="Export PNG" title="Export PNG">PNG</button>
 </div>
@@ -278,7 +279,7 @@ function applyStyle(k,v){style[k]=v;const L=selected();if(L.length){mark();for(c
 $('#bUndo').onclick=undo;$('#bRedo').onclick=redo;
 $('#bIn').onclick=()=>zoomBy(1.25);$('#bOut').onclick=()=>zoomBy(.8);$('#zl').onclick=()=>zoomTo(1);$('#bFit').onclick=fit;
 $('#mNew').onclick=newDoc;$('#mOpen').onclick=()=>$('#file').click();
-$('#mJson').onclick=exportJSON;$('#mSvg').onclick=exportSVG;$('#mPng').onclick=exportPNG;
+$('#mJson').onclick=exportJSON;$('#mTldr').onclick=exportTldr;$('#mSvg').onclick=exportSVG;$('#mPng').onclick=exportPNG;
 $('#file').onchange=e=>{const fl=e.target.files[0];if(fl)readFile(fl);e.target.value=''};
 
 /* ---------- camera ---------- */
@@ -497,6 +498,36 @@ function newDoc(){mark();shapes=[];sel.clear();cam={x:0,y:0,z:1};changed();toast
 function download(name,blob){const a=document.createElement('a'),u=URL.createObjectURL(blob);a.href=u;a.download=name;a.style.display='none';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),5000)}
 function exportJSON(){download('board.liteboard',new Blob([JSON.stringify(docObj(),null,1)],{type:'application/vnd.liteboard+json'}));toast('.liteboard 파일로 내보냈습니다.')}
 const selNote=()=>sel.size?' (선택 항목만)':'';
+/* .tldr export — schema/props per a file saved from tldraw.com (record shapes verified by REA bundle analysis) */
+const TL_SCHEMA={schemaVersion:2,sequences:{'com.tldraw.store':5,'com.tldraw.asset':1,'com.tldraw.camera':1,'com.tldraw.document':2,'com.tldraw.instance':26,'com.tldraw.instance_page_state':5,'com.tldraw.page':1,'com.tldraw.instance_presence':6,'com.tldraw.pointer':1,'com.tldraw.shape':4,'com.tldraw.user':1,'com.tldraw.asset.image':6,'com.tldraw.asset.video':5,'com.tldraw.asset.bookmark':2,'com.tldraw.shape.group':0,'com.tldraw.shape.text':4,'com.tldraw.shape.bookmark':4,'com.tldraw.shape.draw':5,'com.tldraw.shape.geo':14,'com.tldraw.shape.note':15,'com.tldraw.shape.line':5,'com.tldraw.shape.frame':1,'com.tldraw.shape.arrow':8,'com.tldraw.shape.highlight':4,'com.tldraw.shape.embed':4,'com.tldraw.shape.image':7,'com.tldraw.shape.video':6,'com.tldraw.binding.arrow':1}};
+const B62='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+function tlIndex(i){const d=(v,n)=>{let s='';for(let k=0;k<n;k++){s=B62[v%62]+s;v=Math.floor(v/62)}return s};return i<62?'a'+d(i,1):i<3844?'b'+d(i,2):i<238328?'c'+d(i,3):'d'+d(i,4)}
+function h16(v){if(v===0)return Object.is(v,-0)?32768:0;if(!Number.isFinite(v))return Number.isNaN(v)?32256:v>0?31744:64512;const s=v<0?1:0;v=Math.abs(v);const n=Math.floor(Math.log2(v));let e=n+15;if(e>=31)return s<<15|31744;if(e<=0)return s<<15|(Math.round(v*2**24)&1023);let m=Math.round((v/2**n-1)*1024);if(m>=1024){m=0;e++;if(e>=31)return s<<15|31744}return s<<15|e<<10|m}
+function encodePath(P){const u=new Uint8Array(8+(P.length-1)*4),dv=new DataView(u.buffer);dv.setFloat32(0,P[0][0],true);dv.setFloat32(4,P[0][1],true);let x=P[0][0],y=P[0][1];
+  for(let i=1;i<P.length;i++){const dx=P[i][0]-x,dy=P[i][1]-y,o=8+(i-1)*4;dv.setUint16(o,h16(dx),true);dv.setUint16(o+2,h16(dy),true);x+=f16(h16(dx));y+=f16(h16(dy))}
+  let b='';for(let i=0;i<u.length;i++)b+=String.fromCharCode(u[i]);return btoa(b)}
+function tlRich(t){return{type:'doc',content:String(t||'').split('\n').map(l=>l?{type:'paragraph',content:[{type:'text',text:l}]}:{type:'paragraph'})}}
+function toTldr(list){
+  const recs=[{gridSize:10,name:'',meta:{},id:'document:document',typeName:'document'},{meta:{},id:'page:page',name:'Page 1',index:'a1',typeName:'page'}];
+  let i=1;const base=(type,x,y,props)=>({x:f(x),y:f(y),rotation:0,isLocked:false,opacity:1,meta:{},id:'shape:'+uid().replace(/^s_/,'')+i,type,props,parentId:'page:page',index:tlIndex(i++),typeName:'shape'});
+  for(const s of list){
+    const st=s.style,c=st.color,common={color:c,size:st.size};
+    if(s.type==='rect'||s.type==='ellipse')recs.push(base('geo',s.x,s.y,{w:s.w,h:s.h,geo:s.type==='rect'?'rectangle':'ellipse',dash:st.dash,growY:0,url:'',scale:1,flipX:false,flipY:false,...common,labelColor:c,fill:st.fill,font:'sans',align:'middle',verticalAlign:'middle',richText:tlRich(s.text)}));
+    else if(s.type==='text')recs.push(base('text',s.x,s.y,{...common,w:s.w,font:'sans',textAlign:'start',autoSize:!s.wrap,scale:1,richText:tlRich(s.text)}));
+    else if(s.type==='note'){const sc=Math.max(.1,s.w/200);recs.push(base('note',s.x,s.y,{...common,richText:tlRich(s.text),font:'sans',align:'start',verticalAlign:'start',labelColor:'black',growY:Math.max(0,s.h/sc-200),fontSizeAdjustment:1,url:'',scale:sc,textLastEditedBy:null}))}
+    else if(s.type==='arrow')recs.push(base('arrow',s.start.x,s.start.y,{kind:'arc',elbowMidPoint:.5,dash:st.dash,...common,fill:'none',labelColor:c,bend:0,start:{x:0,y:0},end:{x:f(s.end.x-s.start.x),y:f(s.end.y-s.start.y)},arrowheadStart:'none',arrowheadEnd:'arrow',richText:tlRich(''),labelPosition:.5,font:'sans',scale:1}));
+    else if(s.type==='line'||(s.type==='draw'&&s.poly)){
+      const P=s.type==='line'?[[s.start.x,s.start.y],[s.end.x,s.end.y]]:s.points,ox=P[0][0],oy=P[0][1],pts={};
+      P.forEach((p,k)=>{const id=tlIndex(k+1);pts[id]={id,index:id,x:f(p[0]-ox),y:f(p[1]-oy)}});
+      recs.push(base('line',ox,oy,{...common,dash:st.dash,spline:'line',points:pts,scale:1}));
+    }else if(s.type==='draw'){
+      const P=s.points;let ox=1/0,oy=1/0;for(const p of P){ox=Math.min(ox,p[0]);oy=Math.min(oy,p[1])}
+      recs.push(base('draw',ox,oy,{segments:[{type:'free',path:encodePath(P.map(p=>[p[0]-ox,p[1]-oy])),dim:2}],...common,fill:st.fill,dash:st.dash,isComplete:true,isClosed:false,isPen:false,scale:1,scaleX:1,scaleY:1}));
+    }
+  }
+  return{tldrawFileFormatVersion:1,schema:TL_SCHEMA,records:recs};
+}
+function exportTldr(){const L=sel.size?selected():shapes;if(!L.length)return toast('내보낼 도형이 없습니다.',1);L.forEach(lay);download('board.tldr',new Blob([JSON.stringify(toTldr(L))],{type:'application/vnd.tldraw+json'}));toast(`.tldr 파일로 내보냈습니다${selNote()}.`)}
 function svgString(){
   const L=sel.size?selected():shapes;if(!L.length)return null;
   L.forEach(lay);const b=union(L),pad=32+Math.max(...L.map(s=>SW[s.style.size]||3)),x=f(b.x-pad),y=f(b.y-pad),w=Math.ceil(b.w+pad*2),h=Math.ceil(b.h+pad*2);
@@ -592,7 +623,7 @@ function fromTldr(file){
 /* ---------- boot ---------- */
 try{const o=JSON.parse(localStorage.getItem(KEY)||'null');if(o&&o.app==='lite-board'&&Array.isArray(o.shapes))setDoc(o.shapes,o.camera,false)}catch(_){}
 render();
-window.__board={getDoc:()=>cl(docObj()),loadDoc:o=>loadDoc(o),importText:(t,n)=>importText(t,n)};
+window.__board={getDoc:()=>cl(docObj()),loadDoc:o=>loadDoc(o),importText:(t,n)=>importText(t,n),toTldr:()=>{shapes.forEach(lay);return toTldr(shapes)}};
 })();
 </script>
 </body>

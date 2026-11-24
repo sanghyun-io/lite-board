@@ -36,6 +36,7 @@
                  "style":{"color":"black","fill":"none","dash":"draw","size":"m"}} ] }
   ```
   `type`은 `rect | ellipse | note | text`(x, y, w, h), `draw`(`points`: **페이지 좌표 절대값** `[[x,y],...]`), `arrow | line`(`start`, `end` 페이지 좌표)입니다. 텍스트에 `"wrap": true`가 있으면 너비 고정 줄바꿈입니다. 배열 순서가 그리는 순서입니다.
+- **`.tldr`** (`board.tldr`): tldraw에서 열 수 있는 파일. tldraw.com에서 저장한 실제 파일의 스키마(`schemaVersion: 2`)와 레코드 형식을 따릅니다. 사각형·타원은 `geo`, 텍스트는 `text`, 노트는 `note`, 화살표는 `arrow`, 선·다각선은 `line`, 손그림은 `draw`(base64 float16 경로)로 저장합니다. 글꼴은 `sans`로 지정합니다. tldraw.com에서는 파일을 캔버스에 끌어다 놓으면 열립니다.
 - **SVG**: 전체 도형(선택이 있으면 선택한 도형만), 여백과 흰 배경 포함.
 - **PNG**: 위 SVG를 2배율로 래스터라이즈.
 
@@ -44,8 +45,7 @@
 상단 메뉴의 **Open** 버튼으로 파일을 고르거나 캔버스에 파일을 끌어다 놓습니다. 가져오기는 현재 문서를 대체하며 `Ctrl+Z`로 되돌릴 수 있습니다.
 
 - `.liteboard`: 자체 포맷(하위 호환으로 `.json`도 열 수 있음). 가져온 뒤에는 전체 도형에 맞춰 화면을 맞춥니다.
-- `.tldr`: 상호운용을 위한 **부분 지원(subset)**입니다. 첫 페이지의 `geo`(타원 계열은 ellipse, 그 외는 rect), `text`, `note`, `arrow`(바인딩·bend 무시), `line`(2점은 line, 3점 이상은 draw), `draw`/`highlight`를 변환합니다. 그룹·프레임 안의 도형은 페이지 좌표로 옮기고, 회전은 무시합니다. 이미지·프레임 등 지원하지 않는 도형은 건너뛰고 개수를 토스트로 알려줍니다. `.tldr` 내보내기는 지원하지 않습니다.
-
+- `.tldr`: 상호운용을 위한 **부분 지원(subset)**입니다. 첫 페이지의 `geo`(타원 계열은 ellipse, 그 외는 rect), `text`, `note`, `arrow`(바인딩·bend 무시), `line`(2점은 line, 3점 이상은 draw), `draw`/`highlight`를 변환합니다. 그룹·프레임 안의 도형은 페이지 좌표로 옮기고, 회전은 무시합니다. 이미지·프레임 등 지원하지 않는 도형은 건너뛰고 개수를 토스트로 알려줍니다.
 예제 파일은 `samples/` 폴더에 있습니다.
 
 ## 고지

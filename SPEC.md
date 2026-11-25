@@ -82,5 +82,10 @@ tldraw.com과 같은 장르(무한 캔버스 화이트보드)의 **아주 가벼
 - `.liteboard` v2: `{app:"lite-board", version:2, current:<pageId>, pages:[{id,name,camera,shapes}]}`. v1(단일 `shapes`)은 `Page 1` 한 장으로 읽음. localStorage 자동 저장도 v2(기존 v1 값은 로드 시 변환).
 - `.tldr` 가져오기는 모든 페이지(`index` 순), 내보내기는 모든 페이지를 `page:<n>` 레코드로. 공유 링크는 모든 페이지를 담고 v1 링크도 해석. SVG/PNG는 현재 페이지(또는 선택)만.
 
+## 추가: 스크립트 API (`window.liteBoard` v1)
+- 자동화 도구·AI 에이전트가 페이지에서 JS로 보드를 조작하도록 공개 API를 둔다. 명세는 `API.md`.
+- JSON 입출력(항상 복사본), 변경 호출 1회 = 실행취소 1단계, 잘못된 입력은 보드를 바꾸지 않고 `Error('liteBoard: ...')`, 다운로드·클립보드·토스트 없음(`importText` 제외).
+- 테스트 전용 `window.__board`는 이 API로 대체한다. 이 기능으로 파일 크기가 목표(70KB)를 조금 넘을 수 있다.
+
 ## 추가: `.tldr` 내보내기
 tldraw.com에서 저장한 실제 파일(`samples/tldraw-real.tldr`)의 `schema`와 도형별 props를 그대로 따라 만든다. 선택이 있으면 선택한 도형만 내보낸다.

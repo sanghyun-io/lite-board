@@ -74,6 +74,14 @@
 
 예제 파일은 `samples/` 폴더에 있습니다(`sample.liteboard`는 `Page 1`, `Ideas` 두 페이지짜리 v2 파일).
 
+## 스크립트 / AI 에이전트용 API
+
+페이지가 `window.liteBoard` 객체를 공개합니다. Playwright나 AI 에이전트의 브라우저 도구처럼 페이지에서 JavaScript를 실행할 수 있으면, 클릭 없이 도형·페이지를 읽고 추가·수정하고 SVG/PNG/공유 링크로 내보낼 수 있습니다. 호출 하나가 실행취소 한 단계이고, 잘못된 입력은 이유를 담은 오류로 거부합니다. 자세한 내용은 [API.md](API.md)를 보세요.
+
+```js
+await page.evaluate(() => liteBoard.addShape({ type: "note", x: 0, y: 0, text: "할 일" }));
+```
+
 ## 고지
 
 lite-board는 독립적으로 만든 프로젝트이며 tldraw와 아무 관련이 없습니다(제휴·후원·승인 관계 없음). "tldraw"는 해당 소유자의 상표이며, `.tldr` 가져오기는 파일 호환을 위한 기능일 뿐입니다.

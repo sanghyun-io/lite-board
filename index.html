@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>lite-board</title>
+<meta name="lite-board-api" content="window.liteBoard v1 — scripting API for automation and AI agents. Docs: https://github.com/sanghyun-io/lite-board/blob/main/API.md">
 <style>
 :root{--bg:#f6f5f2;--dot:#d6d3cc;--panel:#fff;--ink:#22242a;--mut:#7a7e87;--line:#e4e2dd;--acc:#0f766e;--accbg:#e3f1ef;--sel:#0f766e;color-scheme:light dark}
 @media (prefers-color-scheme:dark){:root{--bg:#17181b;--dot:#44474f;--panel:#222429;--ink:#e8e8ea;--mut:#9a9ea7;--line:#34363c;--acc:#5eead4;--accbg:#173c38;--sel:#5eead4}}
@@ -139,7 +140,7 @@ const pg=()=>pages.find(p=>p.id===cur);
 function sync(){const p=pg();if(p){p.shapes=shapes;p.camera=cam}}
 function setCur(id){cur=id;const p=pg();shapes=p.shapes;if(p.camera)cam=p.camera;else{cam=p.camera={x:0,y:0,z:1};if(shapes.length)fit()}}
 const snap=c=>{sync();return JSON.stringify({c:c||cur,p:pages.map(p=>({id:p.id,name:p.name,shapes:p.shapes}))})};
-function mark(){undoS.push(snap());if(undoS.length>200)undoS.shift();redoS=[]}
+function mark(c){undoS.push(snap(c));if(undoS.length>200)undoS.shift();redoS=[]}
 function pruneSel(){for(const id of [...sel])if(!get(id))sel.delete(id)}
 function restore(j){
   sync();const o=JSON.parse(j),prev=cur,was=new Set(shapes.map(s=>s.id)),cams=new Map(pages.map(p=>[p.id,p.camera]));
@@ -343,20 +344,20 @@ function goPage(id){
 }
 function stepPage(k){const i=pages.findIndex(p=>p.id===cur),j=Math.max(0,Math.min(pages.length-1,i+k));goPage(pages[j].id)}
 function nextName(){let n=1;while(pages.some(p=>p.name==='Page '+n))n++;return'Page '+n}
-function addPage(name){if(ed)commitEdit();mark();const p=mkPage(String(name||'').trim().slice(0,60)||nextName());pages.push(p);goPage(p.id);return p.id}
-function delPage(id){
-  const i=pages.findIndex(p=>p.id===id);if(i<0)return;
-  if(pages.length<2)return toast('마지막 페이지는 삭제할 수 없습니다.',1);
+function addPage(name,stay){if(ed)commitEdit();mark();const p=mkPage(String(name||'').trim().slice(0,60)||nextName());pages.push(p);if(stay){renderTabs();saveSoon()}else goPage(p.id);return p.id}
+function delPage(id,quiet){
+  const i=pages.findIndex(p=>p.id===id);if(i<0)return false;
+  if(pages.length<2){if(!quiet)toast('마지막 페이지는 삭제할 수 없습니다.',1);return false}
   if(ed)commitEdit();mark();const nm=pages[i].name;camMem.set(id,pages[i].camera);pages.splice(i,1);
   if(id===cur){drag=null;setCur(pages[Math.min(i,pages.length-1)].id);sel.clear()}
-  renderTabs();changed();toast(`"${nm}" 페이지를 삭제했습니다. Ctrl+Z로 되돌릴 수 있습니다.`);
+  renderTabs();changed();if(!quiet)toast(`"${nm}" 페이지를 삭제했습니다. Ctrl+Z로 되돌릴 수 있습니다.`);return true;
 }
 function startRename(id){
   const p=pages.find(q=>q.id===id),w=[...tabl.children].find(e=>e.dataset.id===id);if(!p||!w)return;
   const b=w.firstChild,i=document.createElement('input');i.className='tin';i.value=p.name;i.maxLength=60;i.setAttribute('aria-label','Rename page');i.style.width=Math.max(70,b.offsetWidth)+'px';
   let done=false;ren=id;
   const end=ok=>{if(done)return;done=true;ren=null;tabK='';const v=i.value.trim();
-    if(ok&&v!==p.name){if(!v)toast('페이지 이름은 비워 둘 수 없습니다.',1);else{mark();p.name=v;saveSoon()}}renderTabs()};
+    if(ok&&v!==p.name&&pages.includes(p)){if(!v)toast('페이지 이름은 비워 둘 수 없습니다.',1);else{mark();p.name=v;saveSoon()}}renderTabs()};
   i.onkeydown=e=>{e.stopPropagation();if(e.key==='Enter'){e.preventDefault();end(true)}else if(e.key==='Escape'){e.preventDefault();end(false)}};
   i.onblur=()=>end(true);b.replaceWith(i);i.focus();i.select();
 }
@@ -658,18 +659,21 @@ function exportTldr(){
   const one=sel.size>0,P=one?[{name:pg().name,shapes:selected()}]:pages;if(!(one||nShapes()))return toast('내보낼 도형이 없습니다.',1);
   layAll();download('board.tldr',new Blob([JSON.stringify(toTldr(P))],{type:'application/vnd.tldraw+json'}));toast(`.tldr 파일로 내보냈습니다${one?selNote():` (${P.length}개 페이지)`}.`);
 }
-function svgString(){
-  const L=sel.size?selected():shapes;if(!L.length)return null;
+function svgString(L=sel.size?selected():shapes){
+  if(!L.length)return null;
   L.forEach(lay);const b=union(L),pad=32+Math.max(...L.map(s=>SW[s.style.size]||3)),x=f(b.x-pad),y=f(b.y-pad),w=Math.ceil(b.w+pad*2),h=Math.ceil(b.h+pad*2);
   return{w,h,s:`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="${x} ${y} ${w} ${h}"><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#ffffff"/>${L.map(s=>shp(s,PAL_L,'#ffffff')).join('')}</svg>`};
 }
 function exportSVG(){const r=svgString();if(!r)return toast('내보낼 도형이 없습니다.',1);download('board.svg',new Blob([r.s],{type:'image/svg+xml'}));toast(`SVG로 내보냈습니다${selNote()}.`)}
+function rasterize(r,k){return new Promise((ok,no)=>{
+  const img=new Image();
+  img.onload=()=>{const c=document.createElement('canvas');c.width=Math.ceil(r.w*k);c.height=Math.ceil(r.h*k);const x=c.getContext('2d');x.scale(k,k);x.drawImage(img,0,0,r.w,r.h);c.toBlob(b=>b?ok(b):no(new Error('PNG encoding failed')),'image/png')};
+  img.onerror=()=>no(new Error('SVG rasterization failed'));
+  img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(r.s);
+})}
 function exportPNG(){
   const r=svgString();if(!r)return toast('내보낼 도형이 없습니다.',1);
-  const img=new Image();
-  img.onload=()=>{const c=document.createElement('canvas');c.width=r.w*2;c.height=r.h*2;const x=c.getContext('2d');x.scale(2,2);x.drawImage(img,0,0,r.w,r.h);c.toBlob(b=>{if(b){download('board.png',b);toast(`PNG로 내보냈습니다${selNote()}.`)}else toast('PNG 생성에 실패했습니다.',1)},'image/png')};
-  img.onerror=()=>toast('PNG 생성에 실패했습니다.',1);
-  img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(r.s);
+  rasterize(r,2).then(b=>{download('board.png',b);toast(`PNG로 내보냈습니다${selNote()}.`)},()=>toast('PNG 생성에 실패했습니다.',1));
 }
 
 /* ---------- import ---------- */
@@ -688,7 +692,8 @@ function importText(text,filename){
   }
   if(o&&!Array.isArray(o.records)&&o.document&&o.document.version!=null){toast('지원하지 않는 구버전 .tldr 파일입니다.',1);return{ok:false,error:'old-tldr'}}
   if(o&&Array.isArray(o.records)){
-    const r=fromTldr(o),n=setDoc(r.pages,0,true);fit();
+    let r;try{r=fromTldr(o)}catch(_){toast(`.tldr 파일을 해석할 수 없습니다${filename?` (${filename})`:''}.`,1);return{ok:false,error:'tldr'}}
+    const n=setDoc(r.pages,0,true);fit();
     toast(`${pages.length}개 페이지, ${n}개 도형을 가져왔고 ${r.skipped}개는 지원하지 않아 건너뜀`);return{ok:true,imported:n,skipped:r.skipped,pages:pages.length};
   }
   toast('지원하지 않는 파일 형식입니다.',1);return{ok:false,error:'format'};
@@ -705,7 +710,7 @@ function decodePath(b64,dim){
 }
 function richText(p){
   const r=p.richText;
-  if(r&&typeof r==='object'){const walk=n=>!n?'':n.type==='text'?(n.text||''):n.type==='hardBreak'?'\n':(n.content||[]).map(walk).join('');return(Array.isArray(r.content)?r.content:[]).map(walk).join('\n')}
+  if(r&&typeof r==='object'){const walk=n=>!n||typeof n!=='object'?'':n.type==='text'?String(n.text||''):n.type==='hardBreak'?'\n':Array.isArray(n.content)?n.content.map(walk).join(''):'';return(Array.isArray(r.content)?r.content:[]).map(walk).join('\n')}
   return typeof p.text==='string'?p.text:'';
 }
 function tStyle(p){return{color:COLORS.includes(p.color)?p.color:p.color==='white'?'grey':'black',fill:FILLS.includes(p.fill)?p.fill:p.fill?'solid':'none',dash:DASHES.includes(p.dash)?p.dash:'draw',size:SIZES.includes(p.size)?p.size:'m'}}
@@ -763,9 +768,10 @@ async function pipe(u8,stream){return new Uint8Array(await new Response(new Blob
 async function encodeShare(obj){return b64u(await pipe(new TextEncoder().encode(JSON.stringify(obj)),new CompressionStream('deflate-raw')))}
 async function decodeShare(s){return JSON.parse(new TextDecoder().decode(await pipe(ub64u(s),new DecompressionStream('deflate-raw'))))}
 async function copyText(t){try{await navigator.clipboard.writeText(t);return true}catch(_){}try{const a=document.createElement('textarea');a.value=t;a.style.cssText='position:fixed;opacity:0';document.body.appendChild(a);a.select();const ok=document.execCommand('copy');a.remove();return ok}catch(_){return false}}
+async function shareUrl(){return location.href.split('#')[0]+'#b='+await encodeShare(shareObj())}
 async function shareLink(){
   if(!nShapes()){toast('공유할 도형이 없습니다.',1);return null}
-  let url;try{url=location.href.split('#')[0]+'#b='+await encodeShare(shareObj())}catch(_){toast('이 브라우저에서는 링크 공유를 만들 수 없습니다.',1);return null}
+  let url;try{url=await shareUrl()}catch(_){toast('이 브라우저에서는 링크 공유를 만들 수 없습니다.',1);return null}
   const ok=await copyText(url),kb=Math.ceil(url.length/1024);
   if(!ok)history.replaceState(null,'',url);
   toast((ok?'공유 링크를 복사했습니다':'복사에 실패해 주소창에 링크를 넣었습니다. 주소창에서 복사하세요')+` (${kb}KB)${kb>32?'. 링크가 길어 일부 메신저에서 잘릴 수 있습니다':''}.`,!ok);
@@ -787,9 +793,149 @@ try{const raw=localStorage.getItem(KEY),o=JSON.parse(raw||'null'),d=docPages(o);
   if(d&&typeof d==='object'){if(o.version===1&&!localStorage.getItem(KEY+':v1-backup'))localStorage.setItem(KEY+':v1-backup',raw);setDoc(d.pages,d.current,false)}
   else if(raw)localStorage.setItem(KEY+':unreadable-backup',raw)}catch(_){}
 renderTabs();placeTabs();render();openShared();
-window.__board={getDoc:()=>cl(docObj()),loadDoc:o=>loadDoc(o),importText:(t,n)=>importText(t,n),toTldr:()=>{layAll();return toTldr(pages)},shareLink:()=>shareLink(),
-  addPage:n=>addPage(n),switchPage:v=>{const p=typeof v==='number'?pages[v]:pages.find(p=>p.id===v);if(p)goPage(p.id);return!!p},
-  pages:()=>(sync(),pages.map(p=>({id:p.id,name:p.name,count:p.shapes.length})))};
+
+/* ---------- public API: window.liteBoard v1, for scripts and AI agents driving the page (docs: API.md) ----------
+   Plain JSON in and out, always copies. Each mutating call is one undo step. Bad input throws Error('liteBoard: ...'). */
+const fail=m=>{throw new Error('liteBoard: '+m)};
+const ENUM={color:COLORS,fill:FILLS,dash:DASHES,size:SIZES};
+const num=v=>typeof v==='number'&&Number.isFinite(v);
+/* reads only sync(); writes first settle(): commit the human's open text edit / tab rename and drop any gesture in progress */
+function settle(){if(ed)commitEdit();if(ren){const i=tabl.querySelector('input.tin');if(i)i.blur()}drag=null;pinch=null;erasing=new Set();sync()}
+function pageOf(r){
+  sync();if(r==null)return pg();
+  const p=typeof r==='number'?pages[r]:typeof r==='string'?pages.find(q=>q.id===r)||pages.find(q=>q.name===r):null;
+  return p||fail('page not found: '+JSON.stringify(r));
+}
+const pageInfo=p=>({id:p.id,name:p.name,index:pages.indexOf(p),count:p.shapes.length,current:p.id===cur});
+function findShape(id){sync();for(const p of pages){const s=p.shapes.find(x=>x.id===id);if(s)return{p,s}}return null}
+/* one undo step; it remembers the edited page so undo/redo jump to where the change is visible */
+function mutate(fn,on){mark(on&&on.length===1?on[0].id:cur);fn();shapes=pg().shapes;pruneSel();renderTabs();changed()}
+const idSet=(ids,w)=>new Set(typeof ids==='string'?[ids]:Array.isArray(ids)?ids:fail(w+' must be an id or an array of ids'));
+function checkStyle(st,w){
+  if(st==null)return;if(typeof st!=='object'||Array.isArray(st))fail(w+' must be an object');
+  for(const k in st){if(!Object.prototype.hasOwnProperty.call(ENUM,k))fail(`${w}.${k} is not a style key (use color, fill, dash, size)`);if(!ENUM[k].includes(st[k]))fail(`${w}.${k} must be one of ${ENUM[k].join(', ')}`)}
+}
+function checkShape(s,w,keepText){
+  if(!s||typeof s!=='object'||Array.isArray(s))fail(w+' must be an object');
+  if(!TYPES.includes(s.type))fail(`${w}.type must be one of ${TYPES.join(', ')}`);
+  const pt=(v,k)=>{if(!v||!num(v.x)||!num(v.y))fail(`${w}.${k} must be {x: number, y: number}`)};
+  if(s.type==='draw'){
+    if(!Array.isArray(s.points)||!s.points.length)fail(w+'.points must be a non-empty array of [x, y]');
+    s.points.forEach((q,i)=>{if(!(Array.isArray(q)?num(q[0])&&num(q[1]):q&&num(q.x)&&num(q.y)))fail(`${w}.points[${i}] must be [x, y]`)});
+  }else if(s.type==='arrow'||s.type==='line'){pt(s.start,'start');pt(s.end,'end')}
+  else{for(const k of['x','y'])if(!num(s[k]))fail(`${w}.${k} must be a number`);for(const k of['w','h'])if(s[k]!=null&&!(num(s[k])&&s[k]>0))fail(`${w}.${k} must be a positive number`)}
+  if(s.text!=null&&typeof s.text!=='string')fail(w+'.text must be a string');
+  if(s.type==='text'&&!keepText&&!String(s.text||'').trim())fail(w+'.text must not be empty for a text shape');
+  checkStyle(s.style,w+'.style');
+}
+function pickShapes(o){const p=pageOf(o&&o.page);let L=p.shapes;if(o&&o.ids!=null){const w=idSet(o.ids,'ids');L=L.filter(s=>w.has(s.id))}return L}
+function checkDoc(doc){
+  const d=docPages(doc);
+  if(d==null)fail('not a lite-board document (expected app: "lite-board")');
+  if(d==='version')fail(`unsupported version: ${doc.version} (expected 1 or 2)`);
+  if(d==='schema')fail(doc.version===1?'shapes must be an array':'pages must be a non-empty array');
+  d.pages.forEach((p,i)=>{const w=doc.version===1?'doc':`pages[${i}]`;
+    if(!p||typeof p!=='object'||Array.isArray(p))fail(w+' must be an object');
+    if(p.name!=null&&typeof p.name!=='string')fail(w+'.name must be a string');
+    if(p.shapes!=null&&!Array.isArray(p.shapes))fail(w+'.shapes must be an array');
+    (p.shapes||[]).forEach((s,j)=>checkShape(s,`${w}.shapes[${j}]`,true));
+  });
+  return d;
+}
+const api={
+  version:'1.0.0',
+  schema:Object.freeze({types:TYPES.slice(),tools:TOOLS.map(t=>t[0]),colors:COLORS.slice(),fills:FILLS.slice(),dashes:DASHES.slice(),sizes:SIZES.slice()}),
+  /* document */
+  getDoc:()=>cl(docObj()),
+  loadDoc(doc,o){const d=checkDoc(doc);settle();const n=setDoc(d.pages,d.current,true);if(!o||o.fit!==false)fit();return{pages:pages.length,shapes:n}},
+  newDoc(){settle();mark();pages=[mkPage('Page 1')];setCur(pages[0].id);sel.clear();renderTabs();changed();return pageInfo(pg())},
+  importText:(text,filename)=>(settle(),importText(String(text),filename)),
+  /* pages */
+  pages:()=>(sync(),pages.map(pageInfo)),
+  currentPage:()=>(sync(),pageInfo(pg())),
+  addPage(name,o){
+    if(name!=null&&(typeof name!=='string'||!name.trim()))fail('page name must be a non-empty string');
+    settle();const id=addPage(name,!!o&&o.activate===false);return pageInfo(pages.find(p=>p.id===id));
+  },
+  switchPage(r){settle();const p=pageOf(r);goPage(p.id);return pageInfo(p)},
+  renamePage(r,name){
+    const v=typeof name==='string'?name.trim().slice(0,60):'';if(!v)fail('page name must be a non-empty string');
+    settle();const p=pageOf(r);if(v!==p.name){mark();p.name=v;renderTabs();saveSoon()}return pageInfo(p);
+  },
+  deletePage(r){settle();const p=pageOf(r);if(pages.length<2)fail('cannot delete the last page');delPage(p.id,true);return pages.map(pageInfo)},
+  movePage(r,to){
+    settle();const p=pageOf(r),from=pages.indexOf(p);if(!Number.isInteger(to)||to<0||to>=pages.length)fail(`index must be an integer from 0 to ${pages.length-1}`);
+    if(to!==from){mark();pages.splice(to,0,pages.splice(from,1)[0]);renderTabs();saveSoon()}return pages.map(pageInfo);
+  },
+  /* shapes (default: current page; pass {page} as id, index or name to target another page) */
+  getShapes(o){const p=pageOf(o&&o.page);layAll();return cl(p.shapes)},
+  getShape(id){const l=findShape(id);if(!l)return null;layAll();return cl(l.s)},
+  addShapes(list,o){
+    if(!Array.isArray(list))fail('addShapes expects an array of shapes');
+    list.forEach((s,i)=>checkShape(s,`shapes[${i}]`));settle();const p=pageOf(o&&o.page);if(!list.length)return[];
+    const ids=new Set();for(const q of pages)for(const s of q.shapes)ids.add(s.id);
+    const L=list.map(s=>{const n=norm(cl(s));if(ids.has(n.id))n.id=uid();ids.add(n.id);return n});
+    mutate(()=>{p.shapes=p.shapes.concat(L)},[p]);
+    if(o&&o.select&&p.id===cur){tool='select';sel=new Set(L.map(s=>s.id));render()}
+    return L.map(s=>s.id);
+  },
+  addShape:(s,o)=>api.addShapes([s],o)[0],
+  updateShape(id,patch){
+    if(!patch||typeof patch!=='object'||Array.isArray(patch))fail('patch must be an object');
+    checkStyle(patch.style,'patch.style');settle();
+    const l=findShape(id);if(!l)fail('shape not found: '+id);if(patch.type!=null&&patch.type!==l.s.type)fail('type cannot be changed');
+    const m=Object.assign(cl(l.s),cl(patch),{id:l.s.id,type:l.s.type,style:Object.assign({},l.s.style,patch.style)});
+    checkShape(m,'shape',!('text' in patch));const n=norm(m),p=l.p;
+    if(JSON.stringify(n)!==JSON.stringify(l.s))mutate(()=>{p.shapes=p.shapes.map(x=>x.id===id?n:x)},[p]);
+    layAll();return cl(get(id)||n);
+  },
+  moveShapes(ids,dx,dy){
+    if(!num(dx)||!num(dy))fail('dx and dy must be numbers');const want=idSet(ids,'ids');settle();
+    const hit=pages.filter(p=>p.shapes.some(s=>want.has(s.id)));if(!hit.length||(!dx&&!dy))return 0;
+    let n=0;mutate(()=>{for(const p of hit)p.shapes=p.shapes.map(s=>want.has(s.id)?(n++,translate(s,dx,dy)):s)},hit);return n;
+  },
+  deleteShapes(ids){
+    const want=idSet(ids,'ids');settle();
+    const hit=pages.filter(p=>p.shapes.some(s=>want.has(s.id)));if(!hit.length)return 0;
+    let n=0;mutate(()=>{for(const p of hit){const k=p.shapes.length;p.shapes=p.shapes.filter(s=>!want.has(s.id));n+=k-p.shapes.length}},hit);return n;
+  },
+  clearPage(r){settle();const p=pageOf(r),n=p.shapes.length;if(n)mutate(()=>{p.shapes=[]},[p]);return n},
+  /* selection, view, tools (current page) */
+  getSelection:()=>[...sel],
+  select(ids){
+    const want=ids==null?new Set():idSet(ids,'ids');settle();
+    tool='select';sel=new Set(shapes.filter(s=>want.has(s.id)).map(s=>s.id));render();return[...sel];
+  },
+  getCamera:()=>({x:cam.x,y:cam.y,z:cam.z}),
+  setCamera(c){
+    if(!c||typeof c!=='object')fail('camera must be an object {x, y, z}');
+    for(const k of['x','y','z'])if(c[k]!=null&&!num(c[k]))fail(`camera.${k} must be a number`);if(c.z!=null&&c.z<=0)fail('camera.z must be greater than 0');
+    if(drag&&drag.k==='pan')drag=null;if(c.x!=null)cam.x=c.x;if(c.y!=null)cam.y=c.y;if(c.z!=null)cam.z=clampZ(c.z);render();saveSoon();return api.getCamera();
+  },
+  fit(){if(drag&&drag.k==='pan')drag=null;fit();return api.getCamera()},
+  getTool:()=>tool,
+  setTool(t){if(!TOOLS.some(x=>x[0]===t))fail(`tool must be one of ${TOOLS.map(x=>x[0]).join(', ')}`);settle();setTool(t);return t},
+  getStyle:()=>({...style}),
+  setStyle(st){if(st==null)fail('style must be an object');checkStyle(st,'style');Object.assign(style,st);render();return{...style}},
+  /* history */
+  undo(){settle();const n=undoS.length;undo();return undoS.length<n},
+  redo(){settle();const n=redoS.length;redo();return redoS.length<n},
+  /* export (no download, no clipboard, no toast; reads never interrupt what the person is doing) */
+  toTldr(o){const P=o&&o.page!=null?[pageOf(o.page)]:pages;layAll();return toTldr(P)},
+  toSvg(o){const r=svgString(pickShapes(o));return r?r.s:null},
+  async toPng(o){
+    const k=o&&o.scale!=null?o.scale:2;if(!num(k)||k<=0||k>8)fail('scale must be a number in (0, 8]');
+    const r=svgString(pickShapes(o));if(!r)return null;const b=await rasterize(r,k);
+    return new Promise((ok,no)=>{const fr=new FileReader();fr.onload=()=>ok(fr.result);fr.onerror=()=>no(fr.error);fr.readAsDataURL(b)});
+  },
+  getShareLink:()=>shareUrl(),
+  async decodeShareLink(link){
+    const m=/(?:^|[#&])b=([A-Za-z0-9_-]+)/.exec(String(link));if(!m)fail('no #b= board data in the link');
+    let d;try{d=await decodeShare(m[1])}catch(_){fail('the link data is corrupted or truncated')}
+    if(!docPages(d)||typeof docPages(d)!=='object')fail('the link does not contain a lite-board document');return d;
+  },
+};
+Object.defineProperty(window,'liteBoard',{value:Object.freeze(api),enumerable:true});
 })();
 </script>
 </body>

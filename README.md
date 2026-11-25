@@ -82,6 +82,10 @@
 await page.evaluate(() => liteBoard.addShape({ type: "note", x: 0, y: 0, text: "할 일" }));
 ```
 
+## 브라우저 없이 보드 만들기 (SDK · CLI · MCP)
+
+[`sdk/`](sdk/README.md)를 쓰면 도형 목록(JSON)으로 공유 링크나 `.liteboard` 파일을 바로 만들 수 있습니다. 서버도 브라우저도 필요 없습니다. 같은 폴더에 AI 에이전트용 MCP 서버(`node sdk/cli.mjs mcp`)도 있어서, 에이전트가 "다이어그램 그려줘"라는 요청에 보드 링크로 답할 수 있습니다.
+
 ## 고지
 
 lite-board는 독립적으로 만든 프로젝트이며 tldraw와 아무 관련이 없습니다(제휴·후원·승인 관계 없음). "tldraw"는 해당 소유자의 상표이며, `.tldr` 가져오기는 파일 호환을 위한 기능일 뿐입니다.

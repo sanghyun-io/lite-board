@@ -1,15 +1,39 @@
 {
   "name": "lite-board-sdk",
-  "version": "1.0.0",
-  "description": "Make lite-board whiteboard share links and .liteboard files without a browser, plus an MCP server for AI agents.",
+  "version": "1.1.0",
+  "description": "Everything the lite-board whiteboard app does, without a browser: edit boards, export share links, .liteboard, .tldr, SVG and PNG, plus an MCP server for AI agents.",
   "type": "module",
   "main": "./lite-board.mjs",
-  "exports": { ".": "./lite-board.mjs" },
-  "bin": { "lite-board": "./cli.mjs" },
-  "files": ["lite-board.mjs", "cli.mjs", "README.md"],
-  "engines": { "node": ">=18" },
-  "scripts": { "test": "node test.mjs" },
-  "keywords": ["whiteboard", "diagram", "mcp", "lite-board"],
-  "repository": { "type": "git", "url": "git+https://github.com/sanghyun-io/lite-board.git", "directory": "sdk" },
-  "private": true
+  "exports": {
+    ".": "./lite-board.mjs"
+  },
+  "bin": {
+    "lite-board": "./cli.mjs"
+  },
+  "files": [
+    "lite-board.mjs",
+    "cli.mjs",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node test.mjs"
+  },
+  "keywords": [
+    "whiteboard",
+    "diagram",
+    "mcp",
+    "lite-board"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sanghyun-io/lite-board.git",
+    "directory": "sdk"
+  },
+  "private": true,
+  "optionalDependencies": {
+    "@resvg/resvg-js": "^2.6.2"
+  }
 }

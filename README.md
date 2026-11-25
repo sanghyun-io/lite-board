@@ -84,7 +84,7 @@ await page.evaluate(() => liteBoard.addShape({ type: "note", x: 0, y: 0, text: "
 
 ## 브라우저 없이 보드 만들기 (SDK · CLI · MCP)
 
-[`sdk/`](sdk/README.md)를 쓰면 도형 목록(JSON)으로 공유 링크나 `.liteboard` 파일을 바로 만들 수 있습니다. 서버도 브라우저도 필요 없습니다. 같은 폴더에 AI 에이전트용 MCP 서버(`node sdk/cli.mjs mcp`)도 있어서, 에이전트가 "다이어그램 그려줘"라는 요청에 보드 링크로 답할 수 있습니다.
+[`sdk/`](sdk/README.md)는 브라우저 없이 앱의 기능을 모두 씁니다. 보드를 만들고 고치고(페이지, 도형, 복제·붙여넣기, 실행취소), 공유 링크·`.liteboard`·`.tldr`·SVG·PNG로 내보내고, 링크·`.liteboard`·`.tldr`를 읽습니다. 서버는 필요 없습니다. 같은 폴더에 AI 에이전트용 MCP 서버(`node sdk/cli.mjs mcp`)도 있어서, 에이전트가 "다이어그램 그려줘"라는 요청에 보드 링크나 파일로 답할 수 있습니다.
 
 ## 고지
 

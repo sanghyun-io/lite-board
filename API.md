@@ -104,16 +104,20 @@ type Style = { color?, fill?, dash?, size? }       // 생략한 항목은 기본
 | `moveShapes(ids, dx, dy)` | 옮긴 수 | 모든 타입을 평행 이동합니다. |
 | `deleteShapes(ids)` | 지운 수 | id 하나 또는 배열을 받습니다. 없는 id는 무시합니다. |
 | `clearPage(page?)` | 지운 수 | |
+| `duplicate(ids?, {offset?})` | 새 id[] | `Ctrl+D`. 도형을 복제해 같은 페이지에 `offset`(기본 16)만큼 비켜 놓습니다. 생략하면 선택한 도형입니다. 현재 페이지면 복제본을 선택합니다. |
+| `copy(ids?)` / `cut(ids?)` | 복사한 수 | `Ctrl+C` / `Ctrl+X`. 앱 내부 클립보드에 넣습니다(키보드와 같은 클립보드). 생략하면 선택한 도형입니다. |
+| `paste({page?})` | 새 id[] | `Ctrl+V`. 붙여넣을 때마다 16씩 더 비켜 놓습니다. |
 
 ### 선택·화면·도구 (현재 페이지)
 
 | 메서드 | 반환 | 설명 |
 |---|---|---|
 | `getSelection()` / `select(ids)` | id[] | 현재 페이지에 있는 id만 선택됩니다. `select([])`는 선택을 해제합니다. |
+| `selectAll()` | id[] | `Ctrl+A`. |
 | `getCamera()` / `setCamera({x?, y?, z?})` | `{x, y, z}` | 화면 좌표 = 페이지 좌표 × z + (x, y). z는 0.1~8로 제한됩니다. |
 | `fit()` | 카메라 | 현재 페이지 도형 전체에 맞춥니다. |
 | `getTool()` / `setTool(name)` | 도구 이름 | 사람이 이어서 그릴 도구를 고릅니다. |
-| `getStyle()` / `setStyle(style)` | Style | 사람이 다음에 그릴 도형의 기본 스타일입니다. API로 추가하는 도형에는 영향이 없습니다. |
+| `getStyle()` / `setStyle(style, {apply?})` | Style | 사람이 다음에 그릴 도형의 기본 스타일입니다. API로 추가하는 도형에는 영향이 없습니다. `apply:true`이면 스타일 패널처럼 선택한 도형에도 적용합니다(실행취소 한 단계). |
 
 ### 실행취소
 
@@ -130,6 +134,10 @@ type Style = { color?, fill?, dash?, size? }       // 생략한 항목은 기본
 | `toPng({page?, ids?, scale?})` | `Promise<data URL \| null>` | 기본 배율은 2이고, 최대 8입니다. 잘못된 인자는 Promise를 reject합니다. |
 | `getShareLink()` | `Promise<string>` | `#b=` 공유 링크를 만듭니다. 클립보드에는 복사하지 않습니다. 링크를 짧게 하려고 도형·페이지 id를 빼므로, 링크를 열면 id가 새로 발급됩니다. |
 | `decodeShareLink(link)` | `Promise<doc>` | 링크 안의 보드를 객체로 풉니다. 열려면 `loadDoc(await liteBoard.decodeShareLink(url))`처럼 씁니다. 링크가 손상되었으면 `liteBoard:` 오류로 reject합니다. |
+
+## 브라우저 없이
+
+같은 API를 Node나 다른 페이지에서 브라우저 없이 쓰려면 [SDK의 `Board`](sdk/README.md)를 쓰세요. 메서드 이름과 규칙이 같고, `.liteboard`·`.tldr`·SVG·PNG 파일과 공유 링크를 직접 만듭니다.
 
 ## 참고
 

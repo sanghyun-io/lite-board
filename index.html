@@ -614,7 +614,7 @@ function setDoc(raw,current,undoable){
     return{id,name:nm,shapes:sh,camera:c&&Number.isFinite(+c.z)&&+c.z>0?{x:+c.x||0,y:+c.y||0,z:clampZ(+c.z)}:null};
   });
   if(!pages.length)pages=[mkPage('Page 1')];
-  const ci=typeof current==='number'?current:raw.findIndex(p=>p.id===current);
+  const ci=Number.isInteger(current)?current:raw.findIndex(p=>p.id===current);
   drag=null;sel.clear();setCur(pages[ci>=0&&ci<pages.length?ci:0].id);
   renderTabs();changed();return n;
 }
@@ -682,7 +682,7 @@ addEventListener('dragover',e=>{e.preventDefault()});
 addEventListener('drop',e=>{e.preventDefault();const fl=e.dataTransfer&&e.dataTransfer.files[0];if(fl)readFile(fl)});
 function importText(text,filename){
   let o;
-  try{o=JSON.parse(text)}catch(_){toast(`열 수 없는 파일입니다${filename?` (${filename})`:''}: JSON 형식이 아닙니다.`,1);return{ok:false,error:'parse'}}
+  try{o=JSON.parse(String(text).replace(/^﻿/,''))}catch(_){toast(`열 수 없는 파일입니다${filename?` (${filename})`:''}: JSON 형식이 아닙니다.`,1);return{ok:false,error:'parse'}}
   if(o&&o.app==='lite-board'){
     const d=docPages(o);
     if(d==='version'){toast(`지원하지 않는 lite-board 버전입니다 (version: ${o.version==null?'없음':o.version}).`,1);return{ok:false,error:'version'}}
@@ -713,7 +713,7 @@ function richText(p){
   if(r&&typeof r==='object'){const walk=n=>!n||typeof n!=='object'?'':n.type==='text'?String(n.text||''):n.type==='hardBreak'?'\n':Array.isArray(n.content)?n.content.map(walk).join(''):'';return(Array.isArray(r.content)?r.content:[]).map(walk).join('\n')}
   return typeof p.text==='string'?p.text:'';
 }
-function tStyle(p){return{color:COLORS.includes(p.color)?p.color:p.color==='white'?'grey':'black',fill:FILLS.includes(p.fill)?p.fill:p.fill?'solid':'none',dash:DASHES.includes(p.dash)?p.dash:'draw',size:SIZES.includes(p.size)?p.size:'m'}}
+function tStyle(p){return{color:COLORS.includes(p.color)?p.color:p.color==='white'?'grey':'black',fill:FILLS.includes(p.fill)?p.fill:p.fill?'solid':'none',dash:DASHES.includes(p.dash)?p.dash:p.dash==null?'solid':'draw',size:SIZES.includes(p.size)?p.size:'m'}}
 function conv(s,ox,oy){
   const p=s.props||{},x=(+s.x||0)+ox,y=(+s.y||0)+oy,sc=+p.scale||1,style=tStyle(p),id=uid(),n=v=>Number.isFinite(+v)?+v:0;
   switch(s.type){
@@ -828,6 +828,11 @@ function checkShape(s,w,keepText){
   if(s.type==='text'&&!keepText&&!String(s.text||'').trim())fail(w+'.text must not be empty for a text shape');
   checkStyle(s.style,w+'.style');
 }
+/* copies of L on page p, offset by off, as one undo step; selected when p is the current page (like Ctrl+D / Ctrl+V) */
+function clones(p,L,off){
+  const C=L.map(o=>{const s=translate(o,off,off);s.id=uid();return s});
+  mutate(()=>{p.shapes=p.shapes.concat(C)},[p]);if(p.id===cur){tool='select';sel=new Set(C.map(s=>s.id));render()}return C.map(s=>s.id);
+}
 function pickShapes(o){const p=pageOf(o&&o.page);let L=p.shapes;if(o&&o.ids!=null){const w=idSet(o.ids,'ids');L=L.filter(s=>w.has(s.id))}return L}
 function checkDoc(doc){
   const d=docPages(doc);
@@ -900,12 +905,21 @@ const api={
     let n=0;mutate(()=>{for(const p of hit){const k=p.shapes.length;p.shapes=p.shapes.filter(s=>!want.has(s.id));n+=k-p.shapes.length}},hit);return n;
   },
   clearPage(r){settle();const p=pageOf(r),n=p.shapes.length;if(n)mutate(()=>{p.shapes=[]},[p]);return n},
+  /* Ctrl+D / Ctrl+C / Ctrl+X / Ctrl+V (default: the selection; the clipboard is the app's own, shared with the keys) */
+  duplicate(ids,o){
+    const off=o&&o.offset!=null?o.offset:16;if(!num(off))fail('offset must be a number');const want=ids==null?new Set(sel):idSet(ids,'ids');settle();
+    const p=pages.find(q=>q.shapes.some(s=>want.has(s.id)));return p?clones(p,p.shapes.filter(s=>want.has(s.id)),off):[];
+  },
+  copy(ids){const want=ids==null?new Set(sel):idSet(ids,'ids');sync();const L=[];for(const p of pages)for(const s of p.shapes)if(want.has(s.id))L.push(s);if(L.length){clip=cl(L);pasteN=0}return L.length},
+  cut(ids){const w=ids==null?[...sel]:[...idSet(ids,'ids')],n=api.copy(w);if(n)api.deleteShapes(w);return n},
+  paste(o){if(!clip||!clip.length)return[];settle();return clones(pageOf(o&&o.page),clip,16*++pasteN)},
   /* selection, view, tools (current page) */
   getSelection:()=>[...sel],
   select(ids){
     const want=ids==null?new Set():idSet(ids,'ids');settle();
     tool='select';sel=new Set(shapes.filter(s=>want.has(s.id)).map(s=>s.id));render();return[...sel];
   },
+  selectAll:()=>(sync(),api.select(shapes.map(s=>s.id))),
   getCamera:()=>({x:cam.x,y:cam.y,z:cam.z}),
   setCamera(c){
     if(!c||typeof c!=='object')fail('camera must be an object {x, y, z}');
@@ -916,7 +930,11 @@ const api={
   getTool:()=>tool,
   setTool(t){if(!TOOLS.some(x=>x[0]===t))fail(`tool must be one of ${TOOLS.map(x=>x[0]).join(', ')}`);settle();setTool(t);return t},
   getStyle:()=>({...style}),
-  setStyle(st){if(st==null)fail('style must be an object');checkStyle(st,'style');Object.assign(style,st);render();return{...style}},
+  setStyle(st,o){
+    if(st==null)fail('style must be an object');checkStyle(st,'style');if(o&&o.apply)settle();Object.assign(style,st);
+    if(o&&o.apply&&sel.size){const p=pg();mutate(()=>{p.shapes=p.shapes.map(s=>sel.has(s.id)?Object.assign({},s,{style:Object.assign({},s.style,st)}):s)},[p])}
+    render();return{...style};
+  },
   /* history */
   undo(){settle();const n=undoS.length;undo();return undoS.length<n},
   redo(){settle();const n=redoS.length;redo();return redoS.length<n},

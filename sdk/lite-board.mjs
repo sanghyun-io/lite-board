@@ -485,7 +485,7 @@ export class Board {
 
   /* internals (mirror the app) */
   #pg() { return this.#pages.find((p) => p.id === this.#cur); }
-  #setCur(id) { this.#cur = id; const p = this.#pg(); if (!p.camera) { p.camera = { x: 0, y: 0, z: 1 }; if (p.shapes.length) this.#fit(); } }
+  #setCur(id) { this.#cur = id; const p = this.#pg(); if (!p.camera) { p.camera = { x: 0, y: 0, z: 1 }; if (p.shapes.length) this.#fit(true); } }
   #snap(c) { return JSON.stringify({ c: c || this.#cur, p: this.#pages.map((p) => ({ id: p.id, name: p.name, shapes: p.shapes })) }); }
   #mark(c) { this.#undo.push(this.#snap(c)); if (this.#undo.length > 200) this.#undo.shift(); this.#redo = []; }
   #prune() { const ids = new Set(this.#pg().shapes.map((s) => s.id)); for (const id of [...this.#sel]) if (!ids.has(id)) this.#sel.delete(id); }
@@ -512,13 +512,14 @@ export class Board {
     this.#sel.clear(); this.#setCur(this.#pages[ci >= 0 && ci < this.#pages.length ? ci : 0].id);
     return n;
   }
-  #fit() {
+  // open=true for boards opened from a file, link or loadDoc: content uses ~75% of the view, never past 100% (like the app)
+  #fit(open) {
     const p = this.#pg(), L = p.shapes;
     if (!L.length) { p.camera = { x: 0, y: 0, z: 1 }; return; }
     // the app keeps clear of its floating panels (top 72, bottom 72, right style panel ~186 + 24, margins 24)
     const W = this.#view.width, H = this.#view.height, R = W > 700 ? 210 : 24, T = 72, B = 72, Lm = 24, m = 24;
     const aw = Math.max(80, W - Lm - R - 2 * m), ah = Math.max(80, H - T - B - 2 * m), cx = Lm + m + aw / 2, cy = T + m + ah / 2;
-    L.forEach(lay); const b = union(L), z = clampZ(Math.min(4, aw / Math.max(b.w, 1), ah / Math.max(b.h, 1)));
+    L.forEach(lay); const b = union(L), k = open ? 0.75 : 1, z = clampZ(Math.min(open ? 1 : 4, (aw * k) / Math.max(b.w, 1), (ah * k) / Math.max(b.h, 1)));
     p.camera = { x: cx - (b.x + b.w / 2) * z, y: cy - (b.y + b.h / 2) * z, z };
   }
   #layAll() { for (const p of this.#pages) for (const s of p.shapes) if (s.type === "text" || s.type === "note") lay(s); }
@@ -546,7 +547,7 @@ export class Board {
   loadDoc(doc, o) {
     if (!isObj(doc) || doc.app !== "lite-board") fail('not a lite-board document (expected app: "lite-board")');
     const d = docInput(doc); this.#mark(); const n = this.#setDoc(d.pages, d.current);
-    if (!o || o.fit !== false) this.#fit();
+    if (!o || o.fit !== false) this.#fit(true);
     return { pages: this.#pages.length, shapes: n };
   }
   newDoc() { this.#mark(); this.#pages = [mkPage("Page 1")]; this.#setCur(this.#pages[0].id); this.#sel.clear(); return this.#info(this.#pg()); }
@@ -558,13 +559,13 @@ export class Board {
       const d = o.version === 1 ? (Array.isArray(o.shapes) ? { pages: [{ name: "Page 1", shapes: o.shapes, camera: o.camera }] } : "schema") : o.version === 2 ? (Array.isArray(o.pages) && o.pages.length ? { pages: o.pages, current: o.current } : "schema") : "version";
       if (typeof d === "string") return { ok: false, error: d };
       const tot = d.pages.reduce((a, p) => a + (p && Array.isArray(p.shapes) ? p.shapes.length : 0), 0);
-      this.#mark(); const n = this.#setDoc(d.pages, d.current); this.#fit();
+      this.#mark(); const n = this.#setDoc(d.pages, d.current); this.#fit(true);
       return { ok: true, imported: n, skipped: tot - n, pages: this.#pages.length };
     }
     if (o && !Array.isArray(o.records) && o.document && o.document.version != null) return { ok: false, error: "old-tldr" };
     if (o && Array.isArray(o.records)) {
       let r; try { r = readTldr(o); } catch (_) { return { ok: false, error: "tldr" }; }
-      this.#mark(); const n = this.#setDoc(r.doc.pages, 0); this.#fit();
+      this.#mark(); const n = this.#setDoc(r.doc.pages, 0); this.#fit(true);
       return { ok: true, imported: n, skipped: r.skipped, pages: this.#pages.length };
     }
     return { ok: false, error: "format" };

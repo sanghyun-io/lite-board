@@ -138,7 +138,7 @@ const mkPage=name=>({id:pid(),name,shapes:[],camera:{x:0,y:0,z:1}});
 let pages=[mkPage('Page 1')],cur=pages[0].id,ren=null;const camMem=new Map();shapes=pages[0].shapes;cam=pages[0].camera;
 const pg=()=>pages.find(p=>p.id===cur);
 function sync(){const p=pg();if(p){p.shapes=shapes;p.camera=cam}}
-function setCur(id){cur=id;const p=pg();shapes=p.shapes;if(p.camera)cam=p.camera;else{cam=p.camera={x:0,y:0,z:1};if(shapes.length)fit()}}
+function setCur(id){cur=id;const p=pg();shapes=p.shapes;if(p.camera)cam=p.camera;else{cam=p.camera={x:0,y:0,z:1};if(shapes.length)fit(1)}}
 const snap=c=>{sync();return JSON.stringify({c:c||cur,p:pages.map(p=>({id:p.id,name:p.name,shapes:p.shapes}))})};
 function mark(c){undoS.push(snap(c));if(undoS.length>200)undoS.shift();redoS=[]}
 function pruneSel(){for(const id of [...sel])if(!get(id))sel.delete(id)}
@@ -315,7 +315,7 @@ function syncUI(){
 function setTool(t){if(ed)commitEdit();tool=t;if(t!=='select')sel.clear();render()}
 function applyStyle(k,v){style[k]=v;const L=selected();if(L.length){mark();for(const s of L)s.style[k]=v}changed()}
 $('#bUndo').onclick=undo;$('#bRedo').onclick=redo;
-$('#bIn').onclick=()=>zoomBy(1.25);$('#bOut').onclick=()=>zoomBy(.8);$('#zl').onclick=()=>zoomTo(1);$('#bFit').onclick=fit;
+$('#bIn').onclick=()=>zoomBy(1.25);$('#bOut').onclick=()=>zoomBy(.8);$('#zl').onclick=()=>zoomTo(1);$('#bFit').onclick=()=>fit();
 $('#mNew').onclick=newDoc;$('#mOpen').onclick=()=>$('#file').click();
 $('#mShare').onclick=()=>shareLink();$('#mJson').onclick=exportJSON;$('#mTldr').onclick=exportTldr;$('#mSvg').onclick=exportSVG;$('#mPng').onclick=exportPNG;
 $('#file').onchange=e=>{const fl=e.target.files[0];if(fl)readFile(fl);e.target.value=''};
@@ -383,12 +383,13 @@ const clampZ=z=>Math.min(8,Math.max(.1,z));
 function zoomAt(sx,sy,nz){nz=clampZ(nz);const px=(sx-cam.x)/cam.z,py=(sy-cam.y)/cam.z;cam.z=nz;cam.x=sx-px*nz;cam.y=sy-py*nz;render();saveSoon()}
 const zoomBy=k=>zoomAt(innerWidth/2,innerHeight/2,cam.z*k);
 const zoomTo=z=>zoomAt(innerWidth/2,innerHeight/2,z);
-function fit(){
+/* open=true (a board opened from a file, a link or the API's loadDoc): roomier view — content uses ~75% of the space and is never zoomed past 100% */
+function fit(open){
   if(!shapes.length){cam={x:0,y:0,z:1};render();return}
   // keep clear of the floating panels: top menu/toolbar, right style panel, bottom controls
   const sp=$('#style'),R=sp&&sp.offsetWidth&&innerWidth>700?sp.offsetWidth+24:24,T=72,B=72,Lm=24,m=24;
   const aw=Math.max(80,innerWidth-Lm-R-2*m),ah=Math.max(80,innerHeight-T-B-2*m),cx=Lm+m+aw/2,cy=T+m+ah/2;
-  const b=union(shapes),z=clampZ(Math.min(4,aw/Math.max(b.w,1),ah/Math.max(b.h,1)));
+  const k=open?.75:1,b=union(shapes),z=clampZ(Math.min(open?1:4,aw*k/Math.max(b.w,1),ah*k/Math.max(b.h,1)));
   cam.z=z;cam.x=cx-(b.x+b.w/2)*z;cam.y=cy-(b.y+b.h/2)*z;render();saveSoon();
 }
 const toPage=(sx,sy)=>({x:(sx-cam.x)/cam.z,y:(sy-cam.y)/cam.z});
@@ -687,13 +688,13 @@ function importText(text,filename){
     const d=docPages(o);
     if(d==='version'){toast(`지원하지 않는 lite-board 버전입니다 (version: ${o.version==null?'없음':o.version}).`,1);return{ok:false,error:'version'}}
     if(d==='schema'){toast(`lite-board 파일의 ${o.version===1?'shapes':'pages'}가 올바르지 않습니다.`,1);return{ok:false,error:'schema'}}
-    const tot=d.pages.reduce((a,p)=>a+(p&&Array.isArray(p.shapes)?p.shapes.length:0),0),n=setDoc(d.pages,d.current,true);fit();
+    const tot=d.pages.reduce((a,p)=>a+(p&&Array.isArray(p.shapes)?p.shapes.length:0),0),n=setDoc(d.pages,d.current,true);fit(1);
     toast(`${pages.length>1?pages.length+'개 페이지, ':''}${n}개 도형을 불러왔습니다.`);return{ok:true,imported:n,skipped:tot-n,pages:pages.length};
   }
   if(o&&!Array.isArray(o.records)&&o.document&&o.document.version!=null){toast('지원하지 않는 구버전 .tldr 파일입니다.',1);return{ok:false,error:'old-tldr'}}
   if(o&&Array.isArray(o.records)){
     let r;try{r=fromTldr(o)}catch(_){toast(`.tldr 파일을 해석할 수 없습니다${filename?` (${filename})`:''}.`,1);return{ok:false,error:'tldr'}}
-    const n=setDoc(r.pages,0,true);fit();
+    const n=setDoc(r.pages,0,true);fit(1);
     toast(`${pages.length}개 페이지, ${n}개 도형을 가져왔고 ${r.skipped}개는 지원하지 않아 건너뜀`);return{ok:true,imported:n,skipped:r.skipped,pages:pages.length};
   }
   toast('지원하지 않는 파일 형식입니다.',1);return{ok:false,error:'format'};
@@ -783,7 +784,7 @@ async function openShared(){
   try{
     const d=docPages(await decodeShare(m[1]));if(!d||typeof d!=='object')throw 0;
     try{saveNow();const v=localStorage.getItem(KEY);if(v)localStorage.setItem(KEY+':before-share',v)}catch(_){}
-    const n=setDoc(d.pages.map(p=>p&&Object.assign({},p,{camera:null})),d.current,true);fit();toast(`공유된 보드를 열었습니다(${pages.length>1?pages.length+'개 페이지, ':''}${n}개 도형). Ctrl+Z로 원래 보드로 돌아갈 수 있습니다.`);return true;
+    const n=setDoc(d.pages.map(p=>p&&Object.assign({},p,{camera:null})),d.current,true);fit(1);toast(`공유된 보드를 열었습니다(${pages.length>1?pages.length+'개 페이지, ':''}${n}개 도형). Ctrl+Z로 원래 보드로 돌아갈 수 있습니다.`);return true;
   }catch(_){toast('공유 링크가 손상되었거나 잘렸습니다.',1);return false}
 }
 addEventListener('hashchange',openShared);
@@ -852,7 +853,7 @@ const api={
   schema:Object.freeze({types:TYPES.slice(),tools:TOOLS.map(t=>t[0]),colors:COLORS.slice(),fills:FILLS.slice(),dashes:DASHES.slice(),sizes:SIZES.slice()}),
   /* document */
   getDoc:()=>cl(docObj()),
-  loadDoc(doc,o){const d=checkDoc(doc);settle();const n=setDoc(d.pages,d.current,true);if(!o||o.fit!==false)fit();return{pages:pages.length,shapes:n}},
+  loadDoc(doc,o){const d=checkDoc(doc);settle();const n=setDoc(d.pages,d.current,true);if(!o||o.fit!==false)fit(1);return{pages:pages.length,shapes:n}},
   newDoc(){settle();mark();pages=[mkPage('Page 1')];setCur(pages[0].id);sel.clear();renderTabs();changed();return pageInfo(pg())},
   importText:(text,filename)=>(settle(),importText(String(text),filename)),
   /* pages */

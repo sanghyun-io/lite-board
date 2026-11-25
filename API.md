@@ -72,7 +72,7 @@ type Style = { color?, fill?, dash?, size? }       // 생략한 항목은 기본
 | 메서드 | 반환 | 설명 |
 |---|---|---|
 | `getDoc()` | `.liteboard` v2 객체 | 문서 전체(모든 페이지). `.liteboard` 파일 내용과 같습니다. |
-| `loadDoc(doc, {fit?})` | `{pages, shapes}` | v1/v2 객체로 문서를 통째로 바꿉니다. 모든 페이지와 도형을 `addShapes`와 같은 규칙으로 검사합니다. 하나라도 틀리면 오류를 던지고 아무것도 바꾸지 않습니다. `getDoc()` 결과는 항상 그대로 다시 넣을 수 있습니다. 기본으로 화면을 맞추며, `fit:false`이면 맞추지 않습니다. |
+| `loadDoc(doc, {fit?})` | `{pages, shapes}` | v1/v2 객체로 문서를 통째로 바꿉니다. 모든 페이지와 도형을 `addShapes`와 같은 규칙으로 검사합니다. 하나라도 틀리면 오류를 던지고 아무것도 바꾸지 않습니다. `getDoc()` 결과는 항상 그대로 다시 넣을 수 있습니다. 기본으로 파일 열기처럼 여유 있게 화면을 맞추며(도형이 화면의 약 75%, 최대 100% 배율), `fit:false`이면 맞추지 않습니다. |
 | `newDoc()` | 페이지 정보 | 빈 `Page 1` 한 장으로 시작합니다. |
 | `importText(text, filename?)` | `{ok, imported?, skipped?, pages?, error?}` | `.liteboard`나 `.tldr` 파일 내용(문자열)을 앱의 "열기"와 똑같이 가져옵니다. 이 메서드만 실패해도 던지지 않고 `ok:false`를 돌려줍니다. |
 
